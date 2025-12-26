@@ -20,7 +20,7 @@ services:
       - key: DB_NAME
         sync: false
       - key: DB_PORT
-        value: 3306
+        value: 5432
       # Database SSL (set to true for cloud databases)
       - key: DB_SSL
         value: true
