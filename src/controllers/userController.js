@@ -12,7 +12,7 @@ const getUserProfile = async (req, res) => {
     const conn = await pool.getConnection();
 
     const [users] = await conn.query(
-      'SELECT id, name, email, role, status, profile_picture, created_at FROM users WHERE id = ?',
+      'SELECT id, name, email, role, status, profile_picture, created_at FROM users WHERE id = $1',
       [userId]
     );
 
@@ -54,7 +54,7 @@ const approveUser = async (req, res) => {
     const conn = await pool.getConnection();
 
    await conn.query(
-    "UPDATE users SET status = 'approved', role = 'member' WHERE id = ?",
+    "UPDATE users SET status = 'approved', role = 'member' WHERE id = $1",
     [userId]
   );
 
@@ -82,12 +82,12 @@ const updateUserStatus = async (req, res) => {
     // If approving, also set role to member
     if (status === 'approved') {
       await conn.query(
-        "UPDATE users SET status = ?, role = 'member' WHERE id = ?",
+        "UPDATE users SET status = $1, role = 'member' WHERE id = $2",
         [status, userId]
       );
     } else {
       await conn.query(
-        "UPDATE users SET status = ? WHERE id = ?",
+        "UPDATE users SET status = $1 WHERE id = $2",
         [status, userId]
       );
     }
@@ -118,7 +118,7 @@ const getMyApplications = async (req, res) => {
        FROM event_applications ea
        JOIN event_roles r ON ea.role_id = r.id
        JOIN events e ON ea.event_id = e.id
-       WHERE ea.user_id = ?
+       WHERE ea.user_id = $1
        ORDER BY ea.created_at DESC`,
       [userId]
     );
@@ -152,7 +152,7 @@ const changePassword = async (req, res) => {
     const conn = await pool.getConnection();
 
     // Get current user
-    const [users] = await conn.query('SELECT password FROM users WHERE id = ?', [userId]);
+    const [users] = await conn.query('SELECT password FROM users WHERE id = $1', [userId]);
     
     if (users.length === 0) {
       conn.release();
@@ -170,7 +170,7 @@ const changePassword = async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // Update password
-    await conn.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, userId]);
+    await conn.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, userId]);
 
     conn.release();
 
@@ -226,7 +226,7 @@ const updateProfile = async (req, res) => {
 
     // Get current user data
     const [currentUser] = await conn.query(
-      'SELECT name, email, profile_picture FROM users WHERE id = ?',
+      'SELECT name, email, profile_picture FROM users WHERE id = $1',
       [userId]
     );
 
@@ -247,7 +247,7 @@ const updateProfile = async (req, res) => {
     // Check if email is already taken by another user (if email is being changed)
     if (email !== undefined && email !== currentUser[0].email) {
       const [existingEmail] = await conn.query(
-        'SELECT id FROM users WHERE email = ? AND id != ?',
+        'SELECT id FROM users WHERE email = $1 AND id != $2',
         [email, userId]
       );
 
@@ -269,14 +269,15 @@ const updateProfile = async (req, res) => {
     // Prepare update fields
     const updateFields = [];
     const updateValues = [];
+    let paramIndex = 1;
 
     if (name !== undefined) {
-      updateFields.push('name = ?');
+      updateFields.push(`name = $${paramIndex++}`);
       updateValues.push(name.trim());
     }
 
     if (email !== undefined) {
-      updateFields.push('email = ?');
+      updateFields.push(`email = $${paramIndex++}`);
       updateValues.push(email.trim());
     }
 
@@ -290,7 +291,7 @@ const updateProfile = async (req, res) => {
           fs.unlinkSync(oldFilePath);
         }
       }
-      updateFields.push('profile_picture = ?');
+      updateFields.push(`profile_picture = $${paramIndex++}`);
       updateValues.push(profilePicture);
     }
 
@@ -309,10 +310,11 @@ const updateProfile = async (req, res) => {
     }
 
     updateValues.push(userId);
+    const userIdParam = `$${paramIndex}`;
 
     // Update profile
     await conn.query(
-      `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`,
+      `UPDATE users SET ${updateFields.join(', ')} WHERE id = ${userIdParam}`,
       updateValues
     );
 
@@ -353,7 +355,7 @@ const deleteUser = async (req, res) => {
 
     // Get user info to delete profile picture if exists
     const [users] = await conn.query(
-      'SELECT id, profile_picture FROM users WHERE id = ?',
+      'SELECT id, profile_picture FROM users WHERE id = $1',
       [userId]
     );
 
@@ -380,7 +382,7 @@ const deleteUser = async (req, res) => {
     }
 
     // Delete user (cascade will handle related records in event_applications and event_feedback)
-    await conn.query('DELETE FROM users WHERE id = ?', [userId]);
+    await conn.query('DELETE FROM users WHERE id = $1', [userId]);
 
     conn.release();
 
@@ -388,8 +390,8 @@ const deleteUser = async (req, res) => {
   } catch (error) {
     console.error('Error deleting user:', error);
     
-    // Handle foreign key constraint errors
-    if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.code === '23000') {
+    // Handle foreign key constraint errors (PostgreSQL error code)
+    if (error.code === '23503' || error.code === '23000') {
       return res.status(400).json({ 
         error: 'Cannot delete user. User has associated records that must be removed first.' 
       });

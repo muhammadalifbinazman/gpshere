@@ -42,7 +42,7 @@ const register = async (req, res) => {
     const conn = await pool.getConnection();
 
     // Check if email already exists
-    const [rows] = await conn.query('SELECT id FROM users WHERE email = ?', [email]);
+    const [rows] = await conn.query('SELECT id FROM users WHERE email = $1', [email]);
     if (rows.length > 0) {
       conn.release();
       return res.status(400).json({ error: 'Email already registered' });
@@ -53,7 +53,7 @@ const register = async (req, res) => {
 
     // Insert new user
     await conn.query(
-      'INSERT INTO users (name, email, password, role, status) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO users (name, email, password, role, status) VALUES ($1, $2, $3, $4, $5)',
       [name, email, hashedPassword, 'student', 'pending']
     );
 
@@ -97,7 +97,7 @@ const login = async (req, res) => {
     }
 
     // Find user by email
-    const [users] = await conn.query('SELECT * FROM users WHERE email = ?', [email]);
+    const [users] = await conn.query('SELECT * FROM users WHERE email = $1', [email]);
     console.log("🟩 Login Request Body:", req.body);
     console.log("🟩 DB User Lookup Result:", users);
 
@@ -135,7 +135,7 @@ const login = async (req, res) => {
 
     // Save TAC in database
     await conn.query(
-      'UPDATE users SET tac_code = ?, tac_expiry = ? WHERE id = ?',
+      'UPDATE users SET tac_code = $1, tac_expiry = $2 WHERE id = $3',
       [tacCode, tacExpiry, user.id]
     );
 
@@ -196,7 +196,7 @@ const forgotPassword = async (req, res) => {
     conn = await pool.getConnection();
 
     // Find user
-    const [users] = await conn.query('SELECT id, name FROM users WHERE email = ?', [email]);
+    const [users] = await conn.query('SELECT id, name FROM users WHERE email = $1', [email]);
     if (users.length === 0) {
       conn.release();
       // Do not reveal if email exists
@@ -211,7 +211,7 @@ const forgotPassword = async (req, res) => {
 
     // Save reset code
     await conn.query(
-      'UPDATE users SET reset_code = ?, reset_expiry = ? WHERE id = ?',
+      'UPDATE users SET reset_code = $1, reset_expiry = $2 WHERE id = $3',
       [resetCode, resetExpiry, user.id]
     );
 
@@ -262,7 +262,7 @@ const resetPassword = async (req, res) => {
 
     // Fetch user and reset code
     const [users] = await conn.query(
-      'SELECT id, reset_code, reset_expiry FROM users WHERE email = ?',
+      'SELECT id, reset_code, reset_expiry FROM users WHERE email = $1',
       [email]
     );
 
@@ -288,7 +288,7 @@ const resetPassword = async (req, res) => {
     // Update password and clear reset code
     const hashed = await bcrypt.hash(newPassword, 10);
     await conn.query(
-      'UPDATE users SET password = ?, reset_code = NULL, reset_expiry = NULL WHERE id = ?',
+      'UPDATE users SET password = $1, reset_code = NULL, reset_expiry = NULL WHERE id = $2',
       [hashed, user.id]
     );
 
@@ -324,7 +324,7 @@ const verifyTAC = async (req, res) => {
 
     // Find user and verify TAC
     const [users] = await conn.query(
-      'SELECT * FROM users WHERE email = ? AND tac_code = ?',
+      'SELECT * FROM users WHERE email = $1 AND tac_code = $2',
       [email, tac_code]
     );
 
@@ -343,7 +343,7 @@ const verifyTAC = async (req, res) => {
 
     // TAC verified - clear TAC
     await conn.query(
-      'UPDATE users SET tac_code = NULL, tac_expiry = NULL WHERE id = ?',
+      'UPDATE users SET tac_code = NULL, tac_expiry = NULL WHERE id = $1',
       [user.id]
     );
 

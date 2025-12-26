@@ -1,10 +1,9 @@
 // ============================================
-// 📋 DATABASE INITIALIZATION CONTROLLER
+// 📋 DATABASE INITIALIZATION CONTROLLER - PostgreSQL
 // ============================================
 // One-time database initialization endpoint
 // SECURITY: Only allow in development or with secret token
 
-const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const pool = require('../config/database');
 
@@ -24,66 +23,59 @@ async function initializeDatabase(req, res) {
   try {
     console.log('🔄 Starting database initialization via API...');
     
-    // Get connection from pool
+    // Get connection from pool (PostgreSQL compatibility wrapper)
     conn = await pool.getConnection();
-    const dbName = process.env.DB_NAME || 'gpsphere_db';
 
-    // 1. Create database (if connection allows)
-    try {
-      await conn.query(`CREATE DATABASE IF NOT EXISTS ${dbName}`);
-      await conn.query(`USE ${dbName}`);
-      console.log(`✅ Database '${dbName}' ready`);
-    } catch (err) {
-      // If we can't create DB, try to use it (might already exist)
-      await conn.query(`USE ${dbName}`);
-      console.log(`✅ Using existing database '${dbName}'`);
+    // Helper function to check if column exists
+    async function columnExists(tableName, columnName) {
+      const [result] = await conn.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = $1 AND column_name = $2
+      `, [tableName, columnName]);
+      return result && result.length > 0;
     }
 
     const results = [];
 
-    // 2. Create users table
+    // 1. Create users table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         email VARCHAR(100) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
-        role ENUM('student','member','admin') DEFAULT 'student',
-        status ENUM('pending','approved') DEFAULT 'pending',
+        role VARCHAR(20) DEFAULT 'student' CHECK (role IN ('student', 'member', 'admin')),
+        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved')),
         tac_code VARCHAR(10),
-        tac_expiry DATETIME,
+        tac_expiry TIMESTAMP,
         reset_code VARCHAR(10),
-        reset_expiry DATETIME,
+        reset_expiry TIMESTAMP,
+        profile_picture VARCHAR(255) DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     results.push('✅ Table users created or exists');
 
     // Ensure reset columns exist
-    try {
-      await conn.query(`
-        ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS reset_code VARCHAR(10),
-        ADD COLUMN IF NOT EXISTS reset_expiry DATETIME
-      `);
-    } catch (err) {
-      // Columns might already exist
+    if (!(await columnExists('users', 'reset_code'))) {
+      await conn.query('ALTER TABLE users ADD COLUMN reset_code VARCHAR(10)');
     }
+    if (!(await columnExists('users', 'reset_expiry'))) {
+      await conn.query('ALTER TABLE users ADD COLUMN reset_expiry TIMESTAMP');
+    }
+    results.push('✅ Reset columns ensured on users table');
 
     // Ensure profile_picture column exists
-    try {
-      await conn.query(`
-        ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS profile_picture VARCHAR(255) DEFAULT NULL
-      `);
-    } catch (err) {
-      // Column might already exist
+    if (!(await columnExists('users', 'profile_picture'))) {
+      await conn.query('ALTER TABLE users ADD COLUMN profile_picture VARCHAR(255) DEFAULT NULL');
     }
+    results.push('✅ Profile picture column ensured on users table');
 
-    // 3. Create events table
+    // 2. Create events table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS events (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         event_name VARCHAR(200) NOT NULL,
         description TEXT,
         event_date DATE,
@@ -91,17 +83,17 @@ async function initializeDatabase(req, res) {
         location VARCHAR(150),
         director_needed INT DEFAULT 1,
         helper_needed INT DEFAULT 5,
-        status ENUM('ongoing','finished') DEFAULT 'ongoing',
+        status VARCHAR(20) DEFAULT 'ongoing' CHECK (status IN ('ongoing', 'finished')),
         created_by VARCHAR(100),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     results.push('✅ Table events created or exists');
 
-    // 4. Create event_roles table
+    // 3. Create event_roles table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS event_roles (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         event_id INT NOT NULL,
         role_name VARCHAR(100) NOT NULL,
         slots INT DEFAULT 1,
@@ -110,14 +102,14 @@ async function initializeDatabase(req, res) {
     `);
     results.push('✅ Table event_roles created or exists');
 
-    // 5. Create event_applications table
+    // 4. Create event_applications table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS event_applications (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         event_id INT NOT NULL,
         role_id INT NOT NULL,
         user_id INT NOT NULL,
-        status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
         FOREIGN KEY (role_id) REFERENCES event_roles(id) ON DELETE CASCADE,
@@ -126,10 +118,10 @@ async function initializeDatabase(req, res) {
     `);
     results.push('✅ Table event_applications created or exists');
 
-    // 6. Create event_feedback table
+    // 5. Create event_feedback table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS event_feedback (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         event_id INT NOT NULL,
         user_id INT NOT NULL,
         rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
@@ -142,10 +134,10 @@ async function initializeDatabase(req, res) {
     `);
     results.push('✅ Table event_feedback created or exists');
 
-    // 7. Create notifications table
+    // 6. Create notifications table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS notifications (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         user_id INT NOT NULL,
         type VARCHAR(50) NOT NULL DEFAULT 'event',
         title VARCHAR(200) NOT NULL,
@@ -153,17 +145,24 @@ async function initializeDatabase(req, res) {
         related_id INT,
         is_read BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        INDEX idx_user_read (user_id, is_read),
-        INDEX idx_created_at (created_at)
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
     results.push('✅ Table notifications created or exists');
 
-    // 8. Create chatbot_knowledge table
+    // Create indexes for notifications
+    await conn.query(`
+      CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read)
+    `);
+    await conn.query(`
+      CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at)
+    `);
+    results.push('✅ Indexes created for notifications table');
+
+    // 7. Create chatbot_knowledge table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS chatbot_knowledge (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         category VARCHAR(100) NOT NULL,
         keywords TEXT NOT NULL,
         response TEXT NOT NULL,
@@ -171,23 +170,54 @@ async function initializeDatabase(req, res) {
         priority INT DEFAULT 0,
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_category (category),
-        INDEX idx_active (is_active),
-        INDEX idx_priority (priority)
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     results.push('✅ Table chatbot_knowledge created or exists');
 
-    // 9. Insert default admin if not exists
+    // Create indexes for chatbot_knowledge
+    await conn.query(`
+      CREATE INDEX IF NOT EXISTS idx_chatbot_category ON chatbot_knowledge(category)
+    `);
+    await conn.query(`
+      CREATE INDEX IF NOT EXISTS idx_chatbot_active ON chatbot_knowledge(is_active)
+    `);
+    await conn.query(`
+      CREATE INDEX IF NOT EXISTS idx_chatbot_priority ON chatbot_knowledge(priority)
+    `);
+    results.push('✅ Indexes created for chatbot_knowledge table');
+
+    // Create trigger function for updated_at (PostgreSQL equivalent of ON UPDATE CURRENT_TIMESTAMP)
+    await conn.query(`
+      CREATE OR REPLACE FUNCTION update_updated_at_column()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        NEW.updated_at = CURRENT_TIMESTAMP;
+        RETURN NEW;
+      END;
+      $$ language 'plpgsql';
+    `);
+
+    // Create trigger for chatbot_knowledge updated_at
+    await conn.query(`
+      DROP TRIGGER IF EXISTS update_chatbot_knowledge_updated_at ON chatbot_knowledge;
+      CREATE TRIGGER update_chatbot_knowledge_updated_at
+      BEFORE UPDATE ON chatbot_knowledge
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+    `);
+    results.push('✅ Trigger created for chatbot_knowledge updated_at');
+
+    // 8. Insert default admin if not exists
     const [admins] = await conn.query(
-      "SELECT * FROM users WHERE email = 'admin@gpsphere.com'"
+      "SELECT * FROM users WHERE email = $1",
+      ['admin@gpsphere.com']
     );
 
     if (admins.length === 0) {
       const hashedPassword = await bcrypt.hash('Admin123!', 10);
       await conn.query(
-        "INSERT INTO users (name, email, password, role, status) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO users (name, email, password, role, status) VALUES ($1, $2, $3, $4, $5)",
         ['System Admin', 'admin@gpsphere.com', hashedPassword, 'admin', 'approved']
       );
       results.push('✅ Default admin created (Email: admin@gpsphere.com | Password: Admin123!)');
@@ -195,10 +225,10 @@ async function initializeDatabase(req, res) {
       results.push('ℹ️  Admin account already exists');
     }
 
-    // 10. Populate initial chatbot knowledge if empty
+    // 9. Populate initial chatbot knowledge if empty
     const [knowledgeCount] = await conn.query("SELECT COUNT(*) as count FROM chatbot_knowledge");
     
-    if (knowledgeCount[0].count === 0) {
+    if (parseInt(knowledgeCount[0].count) === 0) {
       const initialKnowledge = [
         {
           category: 'greeting',
@@ -288,7 +318,7 @@ async function initializeDatabase(req, res) {
 
       for (const knowledge of initialKnowledge) {
         await conn.query(
-          "INSERT INTO chatbot_knowledge (category, keywords, response, suggestions, priority) VALUES (?, ?, ?, ?, ?)",
+          "INSERT INTO chatbot_knowledge (category, keywords, response, suggestions, priority) VALUES ($1, $2, $3, $4, $5)",
           [knowledge.category, knowledge.keywords, knowledge.response, knowledge.suggestions, knowledge.priority]
         );
       }
@@ -317,4 +347,3 @@ async function initializeDatabase(req, res) {
 }
 
 module.exports = { initializeDatabase };
-
