@@ -29,8 +29,9 @@ const poolConfig = {
   reconnect: true,
   idleTimeout: 60000, // Close idle connections after 60 seconds
   timezone: 'local',
-  acquireTimeout: 60000, // Timeout for getting connection from pool
-  timeout: 60000 // Query timeout
+  acquireTimeout: 30000, // Timeout for getting connection from pool (30 seconds)
+  timeout: 30000, // Query timeout (30 seconds)
+  connectTimeout: 30000 // Connection timeout (30 seconds) - important for cloud databases
 };
 
 // Enable SSL for cloud databases if DB_SSL is set to 'true'
@@ -38,24 +39,60 @@ if (process.env.DB_SSL === 'true') {
   poolConfig.ssl = {
     rejectUnauthorized: false // For most cloud providers
   };
+  console.log('🔒 SSL enabled for database connection');
 }
 
 const pool = mysql.createPool(poolConfig);
 
-// Test connection
+// Test connection with better error handling
 pool.getConnection()
   .then(conn => {
     console.log('✅ Connected to MySQL database');
+    console.log(`   Host: ${poolConfig.host}:${poolConfig.port}`);
+    console.log(`   Database: ${poolConfig.database}`);
     conn.release();
   })
   .catch(err => {
     console.error('❌ Database connection failed:', err.message);
-    console.error('💡 Troubleshooting tips:');
-    console.error('   1. Make sure MySQL/XAMPP is running');
-    console.error('   2. Check your .env file exists in GSphere/ directory');
-    console.error('   3. Verify DB_HOST, DB_USER, DB_PASSWORD, DB_PORT, and DB_NAME');
-    console.error('   4. Run: npm run init-db (from root) or node scripts/initDb.js (from GSphere/)');
-    console.error('   5. If using XAMPP, default port is 3306 (not 3307)');
+    console.error('   Error code:', err.code);
+    console.error('   Error type:', err.errno);
+    
+    // Show current configuration (without password)
+    console.error('\n📋 Current Database Configuration:');
+    console.error(`   Host: ${poolConfig.host || 'NOT SET'}`);
+    console.error(`   Port: ${poolConfig.port || 'NOT SET'}`);
+    console.error(`   User: ${poolConfig.user || 'NOT SET'}`);
+    console.error(`   Database: ${poolConfig.database || 'NOT SET'}`);
+    console.error(`   SSL: ${poolConfig.ssl ? 'Enabled' : 'Disabled'}`);
+    
+    console.error('\n💡 Troubleshooting tips:');
+    
+    if (err.code === 'ETIMEDOUT' || err.code === 'ECONNREFUSED') {
+      console.error('   ⚠️  Connection timeout/refused - This usually means:');
+      console.error('   1. Database host is incorrect or unreachable');
+      console.error('   2. Database is not running or not accessible from Render');
+      console.error('   3. Firewall is blocking the connection');
+      console.error('   4. Wrong port number');
+      console.error('   5. SSL required but not enabled (set DB_SSL=true)');
+      console.error('\n   For Render.com:');
+      console.error('   - If using external MySQL (PlanetScale, Railway, etc.):');
+      console.error('     • Check connection string from your database provider');
+      console.error('     • Ensure DB_SSL=true is set');
+      console.error('     • Verify database allows connections from Render IPs');
+      console.error('   - If using Render PostgreSQL:');
+      console.error('     • You need to migrate to PostgreSQL or use external MySQL');
+    } else if (err.code === 'ER_ACCESS_DENIED_ERROR') {
+      console.error('   ⚠️  Access denied - Check DB_USER and DB_PASSWORD');
+    } else if (err.code === 'ER_BAD_DB_ERROR') {
+      console.error('   ⚠️  Database does not exist - Run initialization script');
+    }
+    
+    console.error('\n   General steps:');
+    console.error('   1. Verify all DB_* environment variables in Render dashboard');
+    console.error('   2. Check database is running and accessible');
+    console.error('   3. For cloud databases, ensure DB_SSL=true');
+    console.error('   4. Initialize database: Visit /api/init-db?secret=YOUR_SECRET');
+    
     // Don't exit in development - allow server to start and show error
     // process.exit(1);
   });
