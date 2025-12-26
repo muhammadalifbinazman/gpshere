@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Admin Dashboard - GPSphere</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background: #f6f7fb;
+    }
+    h1 {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .section {
+        background: white;
+        padding: 15px;
+        margin-bottom: 25px;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+    table, td, th {
+        border: 1px solid #ccc;
+    }
+    th, td {
+        padding: 10px;
+    }
+    button {
+        padding: 6px 10px;
+        background: #4a67ff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    button:hover {
+        background: #324bdf;
+    }
+    
+      .event-form {
+        background: #ffffff;
+        padding: 20px 25px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+
+    .form-row {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 12px;
+    }
+
+    .form-row label {
+        font-weight: bold;
+        margin-bottom: 4px;
+        color: #333;
+    }
+
+    .form-row input {
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .role-list {
+        margin-top: 10px;
+        padding-left: 5px;
+    }
+
+    .role-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .role-item input {
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+    }
+
+    .remove-role-btn {
+        background: #d9534f;
+        color: white;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .add-role-btn {
+        padding: 10px 15px;
+        background: #4a67ff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        margin-top: 10px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .create-event-btn {
+        display: block;
+        margin-top: 20px;
+        padding: 12px;
+        background: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        width: 100%;
+        font-size: 16px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .create-event-btn:hover {
+        background: #3e9143;
+    }
+</style>
+</head>
+<body>
+
+<h1>📊 GPSphere Admin Dashboard</h1>
+
+<!-- logout button -->
+<div style="position:absolute; top:20px; right:20px;">
+    <button onclick="logout()" 
+    style="background:#d9534f;color:white;padding:10px 18px;border:none;border-radius:6px;cursor:pointer;">
+        Logout
+    </button>
+</div>
+<!-- 1. User Management -->
+<div class="section">
+    <h2>👥 Pending User Approvals</h2>
+    <div id="users_table">Loading...</div>
+</div>
+
+<!-- 2. Event Management -->
+<div class="section">
+    <h2>📅 Manage Events</h2>
+
+    <h3>Create New Event</h3>
+
+<div class="event-form">
+    <form id="create_event_form">
+
+        <div class="form-row">
+            <label>Event Name</label>
+            <input type="text" id="event_name" required>
+        </div>
+
+        <div class="form-row">
+            <label>Description</label>
+            <input type="text" id="event_description">
+        </div>
+
+        <div class="form-row">
+            <label>Date</label>
+            <input type="date" id="event_date" required>
+        </div>
+
+        <div class="form-row">
+            <label>Time</label>
+            <input type="time" id="event_time">
+        </div>
+
+        <div class="form-row">
+            <label>Location</label>
+            <input type="text" id="event_location">
+        </div>
+
+        <h3 style="margin-top:25px;">Event Roles</h3>
+
+        <div id="roles_container" class="role-list"></div>
+
+        <button type="button" class="add-role-btn" onclick="addRoleField()">
+            + Add Role
+        </button>
+
+        <button type="submit" class="create-event-btn">Create Event</button>
+
+    </form>
+</div>
+<hr><br>
+
+    <h3>Existing Events</h3>
+    <div id="events_table">Loading...</div>
+</div>
+
+<!-- Modal for Applications -->
+<div id="modal-container" style="
+    display:none;
+    position:fixed; 
+    top:0; left:0;
+    width:100%; height:100%;
+    background:rgba(0,0,0,0.4);
+    justify-content:center;
+    align-items:flex-start;
+    padding-top:80px;
+">
+    <div id="modal-box" style="
+        background:white;
+        width:450px;
+        max-height:80vh;
+        overflow-y:auto;
+        border-radius:12px;
+        padding:20px;
+        box-shadow:0 4px 20px rgba(0,0,0,0.25);
+    ">
+        <div style="text-align:right;">
+            <button onclick="closeModal()" style="background:#d9534f;color:white;padding:6px 10px;border:none;border-radius:6px;cursor:pointer;">Close</button>
+        </div>
+        <div id="modal-content"></div>
+    </div>
+</div>
+
+<script>
+const API = "http://localhost:3000/api";
+
+// Fetch All Users (Admin Only)
+async function loadUsers() {
+    const res = await fetch(`${API}/user/all`, {
+        credentials: "include"
+    });
+    const users = await res.json();
+
+    let html = `
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Approve</th>
+            </tr>
+    `;
+
+    users.forEach(u => {
+        html += `
+            <tr>
+                <td>${u.name}</td>
+                <td>${u.email}</td>
+                <td>${u.role}</td>
+                <td>${u.status}</td>
+                <td>
+                    ${u.status === "pending" ? 
+                        `<button onclick="approveUser('${u.id}')">Approve</button>` 
+                        : "✔ Approved"}
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `</table>`;
+    document.getElementById("users_table").innerHTML = html;
+}
+
+
+// Approve User
+async function approveUser(id) {
+    const res = await fetch(`${API}/user/approve`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: id })
+    });
+    alert("User approved!");
+    loadUsers();
+}
+
+
+// Load Events
+async function loadEvents() {
+    const res = await fetch(`${API}/events`, {
+        credentials: "include"
+    });
+    const events = await res.json();
+
+    let html = `
+        <table>
+            <tr>
+                <th>Event</th>
+                <th>Date</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Delete</th>
+            </tr>
+    `;
+
+    events.forEach(e => {
+      html += `
+    <tr>
+        <td>
+            <b>${e.event_name}</b><br>
+            <small>${e.description || ""}</small>
+        </td>
+        <td>${e.event_date}<br>${e.event_time}</td>
+        <td>${e.location}</td>
+        <td>
+            ${e.roles.map(r =>
+                `<div style='margin-bottom:4px;'>
+                    <b>${r.role_name}</b>: ${r.approvedCount}/${r.slots} approved, ${r.pendingCount} pending
+                </div>`
+            ).join("")}
+        </td>
+        <td>
+            <button onclick="viewApplications(${e.id}, '${e.event_name.replace(/'/g, "\\'") }')">View</button>
+            <br><br>
+            <button onclick="deleteEvent(${e.id})" style="background:#d9534f">Delete</button>
+        </td>
+    </tr>
+`;
+    });
+
+    html += `</table>`;
+    document.getElementById("events_table").innerHTML = html;
+}
+
+//View Applications Event Crew Modal
+async function viewApplications(eventId, eventName) {
+    const res = await fetch(`${API}/events/${eventId}/applications`, {
+        credentials: "include"
+    });
+    const data = await res.json();
+
+    let html = `<h2>Applications for: <b>${eventName}</b></h2>`;
+
+    data.roles.forEach(role => {
+        html += `
+            <h3>${role.role_name} 
+                (Slots: ${role.slots}, Approved: ${role.approvedCount})
+            </h3>
+        `;
+
+        if (role.applications.length === 0) {
+            html += "<i>No applications for this role.</i>";
+        } else {
+            role.applications.forEach(app => {
+                html += `
+                    <div style="margin:8px 0; padding:10px; background:#f5f6ff; border-radius:8px;">
+                        <b>${app.name}</b> (${app.email}) – <b>${app.status}</b><br>
+                        ${app.status === "pending" 
+                            ? `<button style="background:#34a853;" onclick="approveApp(${app.id}, ${eventId})">Approve</button>
+                               <button style="background:#d9534f;" onclick="rejectApp(${app.id}, ${eventId})">Reject</button>`
+                            : ""
+                        }
+                    </div>
+                `;
+            });
+        }
+    });
+
+    document.getElementById("modal-content").innerHTML = html;
+    document.getElementById("modal-container").style.display = "flex";
+}
+
+//Approve Event Crew Application
+async function approveApp(appId, eventId) {
+    const res = await fetch(`${API}/events/applications/${appId}/approve`, {
+        method: "POST",
+        credentials: "include"
+    });
+    const data = await res.json();
+
+    if (!res.ok) alert(data.error);
+    else alert("Application Approved");
+
+    viewApplications(eventId);
+    loadEvents();
+}
+
+//Reject Event Crew Application
+async function rejectApp(appId, eventId) {
+    const res = await fetch(`${API}/events/applications/${appId}/reject`, {
+        method: "POST",
+        credentials: "include"
+    });
+    const data = await res.json();
+
+    if (!res.ok) alert(data.error);
+    else alert("Application Rejected");
+
+    viewApplications(eventId);
+    loadEvents();
+}
+
+
+// Delete Event
+async function deleteEvent(eventId) {
+    const res = await fetch(`${API}/events/${eventId}`, {
+        method: "DELETE",
+        credentials: "include"
+    });
+    alert("Event deleted!");
+    loadEvents();
+}
+
+// Create Event
+document.getElementById("create_event_form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    // Gather dynamic roles
+    let roles = [];
+    for (let i = 1; i <= roleCount; i++) {
+        const nameEl = document.getElementById(`role_name_${i}`);
+        const slotsEl = document.getElementById(`role_slots_${i}`);
+
+        if (nameEl && slotsEl) {
+            roles.push({
+                role_name: nameEl.value,
+                total_needed: parseInt(slotsEl.value)
+            });
+        }
+    }
+
+    const data = {
+        event_name: document.getElementById("event_name").value,
+        description: document.getElementById("event_description").value,
+        event_date: document.getElementById("event_date").value,
+        event_time: document.getElementById("event_time").value,
+        location: document.getElementById("event_location").value,
+        roles: roles
+    };
+
+    await fetch(`${API}/events`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+    });
+
+    alert("Event created with roles!");
+    loadEvents();
+});
+
+// logout functionality
+async function logout() {
+    let res = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include"
+    });
+
+    let data = await res.json();
+
+    // Redirect to homepage
+    window.location.href = "/homepage.html";
+}
+
+let roleCount = 0;
+
+function addRoleField() {
+    roleCount++;
+
+    const container = document.getElementById("roles_container");
+
+    const div = document.createElement("div");
+    div.className = "role-item";
+    div.id = `role_${roleCount}`;
+
+    div.innerHTML = `
+        <input placeholder="Role Name" id="role_name_${roleCount}" required style="width:200px;">
+        <input type="number" placeholder="Slots" id="role_slots_${roleCount}" required style="width:120px;">
+        <button type="button" class="remove-role-btn" onclick="removeRoleField(${roleCount})">Remove</button>
+    `;
+
+    container.appendChild(div);
+}
+
+function removeRoleField(id) {
+    const div = document.getElementById(`role_${id}`);
+    if (div) div.remove();
+}
+
+// Load everything on page open
+loadUsers();
+loadEvents();
+
+function closeModal() {
+    document.getElementById("modal-container").style.display = "none";
+}
+
+</script>
+
+</body>
+</html>

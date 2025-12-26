@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GPSphere – Home</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f6f6ff;
+    }
+
+    /* NAVBAR */
+    .navbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 40px;
+        background: white;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        position: sticky;
+        top: 0;
+    }
+    .navbar .logo {
+        font-size: 22px;
+        font-weight: bold;
+        color: #4a67ff;
+    }
+    .navbar .links a {
+        margin-left: 20px;
+        text-decoration: none;
+        color: #333;
+        font-weight: 500;
+    }
+    .navbar .links a:hover {
+        color: #4a67ff;
+    }
+
+    /* HERO SECTION */
+    .hero {
+        background: linear-gradient(135deg, #6a85ff, #8ec5fc);
+        color: white;
+        padding: 100px 40px;
+        text-align: center;
+    }
+    .hero h1 {
+        font-size: 48px;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+    .hero p {
+        font-size: 20px;
+        max-width: 700px;
+        margin: auto;
+        margin-bottom: 40px;
+    }
+    .hero .buttons a {
+        display: inline-block;
+        padding: 12px 24px;
+        margin: 10px;
+        background: white;
+        color: #4a67ff;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .hero .buttons a:hover {
+        background: #eaeaff;
+    }
+
+    /* ABOUT SECTION */
+    .about {
+        padding: 60px 40px;
+        text-align: center;
+    }
+    .about h2 {
+        font-size: 32px;
+        margin-bottom: 20px;
+    }
+    .about p {
+        font-size: 17px;
+        max-width: 800px;
+        margin: auto;
+        line-height: 1.6;
+    }
+
+    /* FEATURES */
+    .features {
+        padding: 60px 40px;
+        background: #ffffff;
+    }
+    .feature-grid {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .feature {
+        background: #f4f6ff;
+        padding: 20px;
+        width: 280px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .feature h3 {
+        margin-bottom: 10px;
+        color: #4a67ff;
+    }
+
+    /* FOOTER */
+    footer {
+        background: #4a67ff;
+        color: white;
+        text-align: center;
+        padding: 20px;
+        margin-top: 40px;
+    }
+</style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+    <div class="logo">GPSphere</div>
+    <div class="links">
+        <a href="/homepage.html">Home</a>
+        <a href="/login_register.html">Login/Register</a>
+    </div>
+</div>
+
+<!-- HERO SECTION -->
+<div class="hero">
+    <h1>Welcome to GPSphere</h1>
+    <p>The official digital platform for Gerakan Pengguna Siswa (GPS) UTM — connecting students, managing events, and building a smarter, more engaged community.</p>
+</div>
+
+<!-- ABOUT SECTION -->
+<div class="about">
+    <h2>About GPSphere</h2>
+    <p>
+        GPSphere is a centralized digital system created for the Gerakan Pengguna Siswa (GPS) club at Universiti Teknologi Malaysia (UTM). 
+        It helps manage registrations, automate event notifications, support members, and improve communication between GPS and students.
+        <br><br>
+        This platform integrates modern features such as 2-Factor Authentication (email TAC), 
+        event management tools, and an AI-powered chatbot to assist with frequently asked questions.
+    </p>
+</div>
+
+<!-- FEATURES SECTION -->
+<div class="features">
+    <h2 style="text-align:center;">Platform Features</h2>
+    <div class="feature-grid">
+        <div class="feature">
+            <h3>📅 Event Management</h3>
+            <p>Easily browse upcoming GPS events, register, and receive updates instantly.</p>
+        </div>
+        <div class="feature">
+            <h3>🧑‍🤝‍🧑 Membership System</h3>
+            <p>Register as a GPS member and get approved by administrators.</p>
+        </div>
+        <div class="feature">
+            <h3>🤖 AI Chatbot</h3>
+            <p>Instant responses to FAQs, event details, and club information.</p>
+        </div>
+        <div class="feature">
+            <h3>🔐 Secure Login</h3>
+            <p>2FA login with TAC sent to your email for extra security.</p>
+        </div>
+    </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+    © 2025 GPSphere by ByteWave — All Rights Reserved.
+</footer>
+<script src="/chatbot.js"></script>
+</body>
+</html>

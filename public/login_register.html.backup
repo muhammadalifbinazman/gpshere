@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GPSphere - Login & Register</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, #6a85ff, #8ec5fc);
+        display: flex;
+        justify-content: center;
+        padding-top: 40px;
+    }
+
+    .container {
+        width: 450px;
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+
+    .tabs {
+        display: flex;
+        justify-content: space-around;
+        margin-bottom: 20px;
+    }
+
+    .tabs div {
+        padding: 10px 20px;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        font-weight: bold;
+    }
+
+    .tabs .active {
+        color: #4a67ff;
+        border-bottom: 3px solid #4a67ff;
+    }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    input {
+        width: 100%;
+        padding: 12px;
+        margin: 6px 0;
+        border: 1px solid #dadada;
+        border-radius: 6px;
+    }
+
+    button {
+        width: 100%;
+        padding: 12px;
+        background: #4a67ff;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+
+    .result {
+        margin-top: 15px;
+        padding: 10px;
+        background: #f6f8ff;
+        border-left: 4px solid #4a67ff;
+        display: none;
+    }
+
+    /* Floating chatbot cube */
+    #chatbot-toggle {
+        position: fixed;
+        bottom: 25px;
+        right: 25px;
+        background: #4a67ff;
+        width: 55px;
+        height: 55px;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        font-size: 26px;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    /* Chatbot popup window */
+    #chatbot-window {
+        position: fixed;
+        bottom: 90px;
+        right: 25px;
+        width: 320px;
+        height: 420px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+        display: none;
+        flex-direction: column;
+    }
+
+    #chatbot-header {
+        background: #4a67ff;
+        color: white;
+        padding: 12px;
+        border-radius: 12px 12px 0 0;
+        text-align: center;
+        font-weight: bold;
+    }
+
+    #chatbot-messages {
+        padding: 10px;
+        flex-grow: 1;
+        overflow-y: auto;
+        font-size: 14px;
+    }
+
+    #chatbot-input {
+        display: flex;
+        padding: 10px;
+        border-top: 1px solid #ddd;
+    }
+
+    #chatbot-input input {
+        flex-grow: 1;
+        padding: 10px;
+        font-size: 14px;
+    }
+
+    #chatbot-input button {
+        width: 70px;
+        margin-left: 10px;
+        background: #4a67ff;
+    }
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="tabs">
+        <div id="tab-login" class="active" onclick="switchTab('login')">Login</div>
+        <div id="tab-register" onclick="switchTab('register')">Register</div>
+    </div>
+
+    <!-- LOGIN SECTION -->
+    <div id="section-login" class="section active">
+        <input id="login_email" type="email" placeholder="Email" required>
+        <input id="login_password" type="password" placeholder="Password" required>
+        <button onclick="handleLogin()">Login (Send TAC)</button>
+
+        <h4>Verify TAC Code</h4>
+        <input id="login_tac" type="text" placeholder="Enter TAC">
+        <button onclick="verifyTAC()">Verify & Login</button>
+
+        <div class="result" id="login_result"></div>
+    </div>
+
+    <!-- REGISTER SECTION -->
+    <div id="section-register" class="section">
+        <input id="reg_name" type="text" placeholder="Full Name" required>
+        <input id="reg_email" type="email" placeholder="Email" required>
+        <input id="reg_pass" type="password" placeholder="Password">
+        <input id="reg_confirm" type="password" placeholder="Confirm Password">
+        <button onclick="handleRegister()">Create Account</button>
+
+        <div class="result" id="reg_result"></div>
+    </div>
+
+</div>
+
+<!-- FLOATING CHATBOT CUBE -->
+<div id="chatbot-toggle">💬</div>
+
+<!-- CHATBOT POPUP -->
+<div id="chatbot-window">
+    <div id="chatbot-header">GPSphere Chatbot</div>
+    <div id="chatbot-messages"></div>
+
+    <div id="chatbot-input">
+        <input id="chat_input" placeholder="Ask something...">
+        <button onclick="sendChat()">Send</button>
+    </div>
+</div>
+
+
+<script>
+const API = "http://localhost:3000/api";
+
+/* ---------------- NAVIGATION TABS ---------------- */
+function switchTab(tab) {
+    document.getElementById("tab-login").classList.remove("active");
+    document.getElementById("tab-register").classList.remove("active");
+    document.getElementById("section-login").classList.remove("active");
+    document.getElementById("section-register").classList.remove("active");
+
+    if (tab === "login") {
+        document.getElementById("tab-login").classList.add("active");
+        document.getElementById("section-login").classList.add("active");
+    } else {
+        document.getElementById("tab-register").classList.add("active");
+        document.getElementById("section-register").classList.add("active");
+    }
+}
+
+/* ---------------- LOGIN ---------------- */
+async function handleLogin() {
+    let email = document.getElementById("login_email").value;
+    let password = document.getElementById("login_password").value;
+    let box = document.getElementById("login_result");
+
+    box.style.display = "block";
+    box.innerHTML = "Sending TAC...";
+
+    let res = await fetch(`${API}/auth/login`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+    });
+
+    let data = await res.json();
+    box.innerHTML = JSON.stringify(data, null, 2);
+}
+
+/* ---------------- VERIFY TAC ---------------- */
+async function verifyTAC() {
+    let email = document.getElementById("login_email").value;
+    let tac_code = document.getElementById("login_tac").value;
+
+    let box = document.getElementById("login_result");
+    box.style.display = "block";
+    box.innerHTML = "Verifying TAC...";
+
+    let res = await fetch(`${API}/auth/verify-tac`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, tac_code })
+    });
+
+    let data = await res.json();
+    box.innerHTML = JSON.stringify(data, null, 2);
+
+    // Auto fetch profile → redirect
+    let prof = await fetch(`${API}/user/profile`, { credentials:"include" });
+    let user = await prof.json();
+
+    if (user.role === "admin") location.href = "/admin_dashboard.html";
+    if (user.role === "member") location.href = "/member_dashboard.html";
+    if (user.role === "student") location.href = "/student_dashboard.html";
+}
+
+/* ---------------- REGISTER ---------------- */
+async function handleRegister() {
+    const name = document.getElementById("reg_name").value;
+    const email = document.getElementById("reg_email").value;
+    const password = document.getElementById("reg_pass").value;
+    const confirm = document.getElementById("reg_confirm").value;
+    const box = document.getElementById("reg_result");
+
+    box.style.display = "block";
+
+    let res = await fetch(`${API}/auth/register`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json"},
+        body: JSON.stringify({ name, email, password, confirm })
+    });
+
+    let data = await res.json();
+    box.innerHTML = JSON.stringify(data, null, 2);
+}
+
+</script>
+
+</body>
+</html>

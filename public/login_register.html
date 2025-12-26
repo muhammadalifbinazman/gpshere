@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login & Register - GPS Student Consumer Movement</title>
+    <meta name="description" content="Join GPS - Gerakan Pengguna Siswa to become a smart, ethical, and responsible consumer">
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/auth.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-box">
+            <!-- Header -->
+            <div class="auth-header">
+                <img src="/images/gps-utm-logo.png" alt="GPS UTM Logo" style="max-width: 400px; width: 100%; height: auto; margin-bottom: 20px;">
+                <p style="font-size: 16px; color: var(--text-dark); margin-top: 10px;">Student Consumer Movement</p>
+                <p style="margin-top: 15px; color: var(--gray);">Join us to become a smart, ethical, and responsible consumer</p>
+            </div>
+
+            <!-- Tabs -->
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="loginTab">Login</button>
+                <button class="auth-tab" id="registerTab">Register</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form active">
+                <div class="form-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input 
+                        type="email" 
+                        id="loginEmail" 
+                        class="form-control" 
+                        placeholder="Enter your email"
+                        required
+                    >
+                    <div class="error-message"></div>
+                </div>
+
+                <div class="form-group password-toggle">
+                    <label for="loginPassword">Password</label>
+                    <input 
+                        type="password" 
+                        id="loginPassword" 
+                        class="form-control" 
+                        placeholder="Enter your password"
+                        required
+                    >
+                    <span class="toggle-icon">👁️‍🗨️</span>
+                    <div class="error-message"></div>
+                </div>
+
+                <div class="remember-forgot">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="rememberMe">
+                        <label for="rememberMe">Remember me</label>
+                    </div>
+                    <a href="#" id="forgotPasswordLink">Forgot password?</a>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    Login
+                </button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="registerForm" class="auth-form">
+                <div class="form-group">
+                    <label for="registerName">Full Name</label>
+                    <input 
+                        type="text" 
+                        id="registerName" 
+                        class="form-control" 
+                        placeholder="Enter your full name"
+                        required
+                    >
+                    <div class="error-message"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="registerEmail">Email Address</label>
+                    <input 
+                        type="email" 
+                        id="registerEmail" 
+                        class="form-control" 
+                        placeholder="Enter your email"
+                        required
+                    >
+                    <div class="error-message"></div>
+                </div>
+
+                <div class="form-group password-toggle">
+                    <label for="registerPassword">Password</label>
+                    <input 
+                        type="password" 
+                        id="registerPassword" 
+                        class="form-control" 
+                        placeholder="Create a password"
+                        required
+                    >
+                    <span class="toggle-icon">👁️‍🗨️</span>
+                    <div class="error-message"></div>
+                    <small style="color: var(--gray); font-size: 12px;">
+                        Minimum 8 characters, 1 uppercase, 1 lowercase, 1 number, and 1 symbol
+                    </small>
+                </div>
+
+                <div class="form-group password-toggle">
+                    <label for="registerConfirmPassword">Confirm Password</label>
+                    <input 
+                        type="password" 
+                        id="registerConfirmPassword" 
+                        class="form-control" 
+                        placeholder="Confirm your password"
+                        required
+                    >
+                    <span class="toggle-icon">👁️‍🗨️</span>
+                    <div class="error-message"></div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    Register
+                </button>
+
+                <p style="font-size: 12px; color: var(--gray); margin-top: 15px;">
+                    By registering, your account will be pending admin approval before you can access the system.
+                </p>
+            </form>
+
+            <!-- Footer -->
+            <div class="auth-footer">
+                <a href="/homepage.html">← Back to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAC Verification Modal (will be created dynamically by JS) -->
+    <div id="tacModal" class="tac-modal">
+        <div class="tac-content">
+            <h2>🔐 Enter Verification Code</h2>
+            <p>We've sent a 6-digit code to <strong id="tacEmail"></strong></p>
+            
+            <input 
+                type="text" 
+                id="tacInput" 
+                class="tac-input" 
+                maxlength="6" 
+                placeholder="000000"
+                autocomplete="off"
+            >
+            
+            <div class="tac-timer" id="tacTimer">
+                Time remaining: <span id="tacCountdown">15:00</span>
+            </div>
+            
+            <button onclick="verifyTAC()" class="btn btn-primary" style="width: 100%; margin-bottom: 15px;">
+                Verify Code
+            </button>
+            
+            <a href="#" class="resend-tac" onclick="resendTAC(); return false;" id="resendLink">
+                Resend Code
+            </a>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div id="forgotModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Forgot Password</h3>
+                <button class="close-btn" id="closeForgotModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="forgotEmail">Email Address</label>
+                    <input type="email" id="forgotEmail" class="form-control" placeholder="Enter your email">
+                    <div class="error-message"></div>
+                </div>
+                <div class="form-group">
+                    <label for="resetCode">Reset Code</label>
+                    <input type="text" id="resetCode" class="form-control" placeholder="6-digit code" maxlength="6">
+                    <div class="error-message"></div>
+                </div>
+                <div class="form-group password-toggle">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" class="form-control" placeholder="New password">
+                    <span class="toggle-icon">👁️‍🗨️</span>
+                    <div class="error-message"></div>
+                    <small style="color: var(--gray); font-size: 12px;">
+                        Minimum 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 symbol
+                    </small>
+                </div>
+                <div class="form-group password-toggle">
+                    <label for="confirmNewPassword">Confirm New Password</label>
+                    <input type="password" id="confirmNewPassword" class="form-control" placeholder="Confirm new password">
+                    <span class="toggle-icon">👁️‍🗨️</span>
+                    <div class="error-message"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="sendResetCodeBtn">Send Reset Code</button>
+                <button class="btn btn-primary" id="resetPasswordBtn">Reset Password</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="/js/main.js"></script>
+    <script src="/js/auth.js"></script>
+</body>
+</html>

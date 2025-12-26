@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - GPS UTM Event Management</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <style>
+        .profile-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, #8B2346 0%, #3B4A8C 100%);
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: white;
+            color: #8B2346;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 0 auto 1rem;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-avatar-text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-picture-upload {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .profile-picture-upload input[type="file"] {
+            display: none;
+        }
+
+        .profile-picture-upload label {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .profile-picture-upload label:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .profile-picture-preview {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid white;
+            margin: 1rem auto;
+            display: none;
+        }
+
+        .profile-picture-preview.show {
+            display: block;
+        }
+
+        .profile-name {
+            font-size: 2rem;
+            margin: 0 0 0.5rem;
+        }
+
+        .profile-email {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .profile-role-badge {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            margin-top: 1rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .profile-sections {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 2rem;
+        }
+
+        .profile-section {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: #8B2346;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .info-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .info-label {
+            display: block;
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .info-value {
+            display: block;
+            color: #333;
+            font-size: 1.1rem;
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .info-value.editing {
+            display: none;
+        }
+
+        .form-control.editing {
+            display: block !important;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #8B2346;
+        }
+
+        .password-requirements {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .password-requirements ul {
+            margin: 0.5rem 0 0 1.5rem;
+            color: #666;
+        }
+
+        .password-requirements li {
+            margin: 0.25rem 0;
+        }
+
+        .btn {
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #8B2346;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #6d1a37;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(139, 35, 70, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            margin-left: 1rem;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            color: #8B2346;
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            transition: color 0.3s;
+        }
+
+        .back-link:hover {
+            color: #6d1a37;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-approved {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-rejected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        @media (max-width: 768px) {
+            .profile-sections {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="profile-container">
+        <a href="#" class="back-link" onclick="goBackToDashboard()">
+            ← Back to Dashboard
+        </a>
+
+        <div class="profile-header">
+            <div class="profile-avatar" id="profileAvatar">
+                <img id="profileAvatarImg" src="" alt="Profile Picture" style="display: none;">
+                <div class="profile-avatar-text" id="profileAvatarText"></div>
+            </div>
+            <div class="profile-picture-upload">
+                <input type="file" id="profilePictureInput" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp">
+                <label for="profilePictureInput">📷 Change Photo</label>
+            </div>
+            <h1 class="profile-name" id="profileName">Loading...</h1>
+            <p class="profile-email" id="profileEmail"></p>
+            <span class="profile-role-badge" id="profileRole"></span>
+        </div>
+
+        <div class="profile-sections">
+            <!-- Profile Information Section -->
+            <div class="profile-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 class="section-title" style="margin: 0;">Profile Information</h2>
+                    <button id="editProfileBtn" class="btn btn-primary" onclick="toggleEditMode()" style="padding: 0.5rem 1.5rem; font-size: 0.9rem;">
+                        ✏️ Edit Profile
+                    </button>
+                </div>
+                
+                <div class="info-group">
+                    <span class="info-label">Full Name</span>
+                    <span class="info-value" id="infoName">-</span>
+                    <input type="text" id="editName" class="form-control" style="display: none;" placeholder="Enter your name">
+                </div>
+
+                <div class="info-group">
+                    <span class="info-label">Email Address</span>
+                    <span class="info-value" id="infoEmail">-</span>
+                    <input type="email" id="editEmail" class="form-control" style="display: none;" placeholder="Enter your email">
+                </div>
+
+                <div class="info-group">
+                    <span class="info-label">Account Role</span>
+                    <span class="info-value" id="infoRole">-</span>
+                </div>
+
+                <div class="info-group">
+                    <span class="info-label">Account Status</span>
+                    <span class="info-value" id="infoStatus">-</span>
+                </div>
+
+                <div class="info-group">
+                    <span class="info-label">Member Since</span>
+                    <span class="info-value" id="infoCreated">-</span>
+                </div>
+
+                <div id="editProfileActions" style="display: none; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" onclick="cancelEdit()">Cancel</button>
+                </div>
+            </div>
+
+            <!-- Change Password Section -->
+            <div class="profile-section">
+                <h2 class="section-title">Change Password</h2>
+                
+                <form id="changePasswordForm">
+                    <div class="form-group">
+                        <label for="currentPassword">Current Password</label>
+                        <input type="password" id="currentPassword" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="newPassword">New Password</label>
+                        <input type="password" id="newPassword" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm New Password</label>
+                        <input type="password" id="confirmPassword" required>
+                    </div>
+
+                    <div class="password-requirements">
+                        <strong>Password Requirements:</strong>
+                        <ul>
+                            <li>At least 8 characters long</li>
+                            <li>One uppercase letter (A-Z)</li>
+                            <li>One lowercase letter (a-z)</li>
+                            <li>One number (0-9)</li>
+                            <li>One special character (!@#$%^&*)</li>
+                        </ul>
+                    </div>
+
+                    <div style="margin-top: 2rem;">
+                        <button type="submit" class="btn btn-primary">Update Password</button>
+                        <button type="button" class="btn btn-secondary" onclick="resetPasswordForm()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/main.js"></script>
+    <script>
+        // Check authentication
+        if (!AppUtils.isLoggedIn()) {
+            window.location.href = '/login_register.html';
+        }
+
+        let userProfile = {};
+        let isEditMode = false;
+
+        // Load user profile
+        async function loadProfile() {
+            try {
+                userProfile = await AppUtils.apiRequest('/user/profile');
+                
+                // Update profile picture
+                const avatarImg = document.getElementById('profileAvatarImg');
+                const avatarText = document.getElementById('profileAvatarText');
+                
+                if (userProfile.profile_picture) {
+                    avatarImg.src = userProfile.profile_picture;
+                    avatarImg.style.display = 'block';
+                    avatarText.style.display = 'none';
+                } else {
+                    avatarImg.style.display = 'none';
+                    avatarText.style.display = 'flex';
+                    avatarText.textContent = AppUtils.getInitials(userProfile.name);
+                }
+                
+                // Update header
+                document.getElementById('profileName').textContent = userProfile.name;
+                document.getElementById('profileEmail').textContent = userProfile.email;
+                document.getElementById('profileRole').textContent = userProfile.role;
+
+                // Update info section
+                document.getElementById('infoName').textContent = userProfile.name;
+                document.getElementById('infoEmail').textContent = userProfile.email;
+                document.getElementById('infoRole').textContent = userProfile.role.charAt(0).toUpperCase() + userProfile.role.slice(1);
+                
+                const statusBadge = `<span class="status-badge status-${userProfile.status}">${userProfile.status}</span>`;
+                document.getElementById('infoStatus').innerHTML = statusBadge;
+                document.getElementById('infoCreated').textContent = AppUtils.formatDate(userProfile.created_at);
+
+                // Set edit fields
+                document.getElementById('editName').value = userProfile.name;
+                document.getElementById('editEmail').value = userProfile.email;
+
+            } catch (error) {
+                AppUtils.showError('Failed to load profile');
+                console.error(error);
+            }
+        }
+
+        // Handle profile picture upload
+        document.getElementById('profilePictureInput').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Validate file type
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                AppUtils.showError('Please select a valid image file (JPEG, PNG, GIF, or WebP)');
+                e.target.value = '';
+                return;
+            }
+
+            // Validate file size (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                AppUtils.showError('Image size must be less than 5MB');
+                e.target.value = '';
+                return;
+            }
+
+            try {
+                AppUtils.showLoader();
+
+                // Create FormData for file upload
+                const formData = new FormData();
+                formData.append('profilePicture', file);
+                
+                // Include name and email if they exist (to preserve them)
+                const name = document.getElementById('editName').value || userProfile.name;
+                const email = document.getElementById('editEmail').value || userProfile.email;
+                formData.append('name', name);
+                formData.append('email', email);
+
+                // Upload profile picture
+                const response = await fetch('/api/user/profile', {
+                    method: 'PUT',
+                    body: formData,
+                    credentials: 'include'
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to upload profile picture');
+                }
+
+                AppUtils.showSuccess('Profile picture updated successfully');
+                
+                // Reload profile to show new picture
+                await loadProfile();
+                e.target.value = '';
+
+            } catch (error) {
+                AppUtils.showError(error.message || 'Failed to upload profile picture');
+                e.target.value = '';
+            } finally {
+                AppUtils.hideLoader();
+            }
+        });
+
+        // Toggle edit mode
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            
+            if (isEditMode) {
+                // Show edit inputs, hide display values
+                document.getElementById('infoName').classList.add('editing');
+                document.getElementById('infoEmail').classList.add('editing');
+                document.getElementById('editName').classList.add('editing');
+                document.getElementById('editEmail').classList.add('editing');
+                document.getElementById('editProfileActions').style.display = 'block';
+                document.getElementById('editProfileBtn').textContent = '✖️ Cancel';
+            } else {
+                // Hide edit inputs, show display values
+                cancelEdit();
+            }
+        }
+
+        // Cancel edit mode
+        function cancelEdit() {
+            isEditMode = false;
+            document.getElementById('infoName').classList.remove('editing');
+            document.getElementById('infoEmail').classList.remove('editing');
+            document.getElementById('editName').classList.remove('editing');
+            document.getElementById('editEmail').classList.remove('editing');
+            document.getElementById('editProfileActions').style.display = 'none';
+            document.getElementById('editProfileBtn').textContent = '✏️ Edit Profile';
+            
+            // Reset values to original
+            document.getElementById('editName').value = userProfile.name;
+            document.getElementById('editEmail').value = userProfile.email;
+        }
+
+        // Save profile changes
+        async function saveProfile() {
+            const name = document.getElementById('editName').value.trim();
+            const email = document.getElementById('editEmail').value.trim();
+
+            // Validate name
+            if (!name || name.length < 2) {
+                AppUtils.showError('Name must be at least 2 characters');
+                return;
+            }
+
+            // Validate email
+            if (!AppUtils.validateEmail(email)) {
+                AppUtils.showError('Please enter a valid email address');
+                return;
+            }
+
+            // Check if values changed
+            if (name === userProfile.name && email === userProfile.email) {
+                AppUtils.showInfo('No changes to save');
+                cancelEdit();
+                return;
+            }
+
+            try {
+                AppUtils.showLoader();
+                
+                // Use FormData for consistency (even without file)
+                const formData = new FormData();
+                formData.append('name', name);
+                formData.append('email', email);
+
+                const response = await fetch('/api/user/profile', {
+                    method: 'PUT',
+                    body: formData,
+                    credentials: 'include'
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to update profile');
+                }
+
+                AppUtils.showSuccess('Profile updated successfully');
+                
+                // Reload profile to get updated data
+                await loadProfile();
+                cancelEdit();
+
+            } catch (error) {
+                AppUtils.showError(error.message || 'Failed to update profile');
+            } finally {
+                AppUtils.hideLoader();
+            }
+        }
+
+        // Handle password change
+        document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            // Validate new password
+            if (!AppUtils.validatePassword(newPassword)) {
+                AppUtils.showError('New password does not meet requirements');
+                return;
+            }
+
+            // Check if passwords match
+            if (newPassword !== confirmPassword) {
+                AppUtils.showError('New passwords do not match');
+                return;
+            }
+
+            // Check if new password is same as current
+            if (currentPassword === newPassword) {
+                AppUtils.showError('New password must be different from current password');
+                return;
+            }
+
+            try {
+                AppUtils.showLoader();
+                
+                await AppUtils.apiRequest('/user/change-password', 'POST', {
+                    currentPassword,
+                    newPassword
+                });
+
+                AppUtils.showSuccess('Password changed successfully');
+                resetPasswordForm();
+
+            } catch (error) {
+                AppUtils.showError(error.message || 'Failed to change password');
+            } finally {
+                AppUtils.hideLoader();
+            }
+        });
+
+        function resetPasswordForm() {
+            document.getElementById('changePasswordForm').reset();
+        }
+
+        function goBackToDashboard() {
+            const role = AppUtils.getUserData().role;
+            AppUtils.redirectToDashboard(role);
+        }
+
+        // Load profile on page load
+        loadProfile();
+    </script>
+</body>
+</html>

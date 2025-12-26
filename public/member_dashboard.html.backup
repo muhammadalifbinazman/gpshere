@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Member Dashboard - GPSphere</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; background:#f3f6ff; color: #222; }
+  header { background: white; padding: 12px 20px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+  header h1 { margin:0; font-size:20px; }
+  .logout { background:#d9534f; border:none; color:white; padding:8px 12px; border-radius:6px; cursor:pointer; }
+
+  .container { max-width:1100px; margin:24px auto; padding:0 16px; }
+  .welcome { background:white; padding:16px; border-radius:10px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.03); }
+
+  .grid { display:grid; grid-template-columns: 1fr; gap:16px; }
+  @media(min-width:900px){ .grid { grid-template-columns: 1fr 380px; } }
+
+  /* Events list */
+  .events { background:white; padding:16px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.03); }
+  .event { border-bottom:1px solid #eee; padding:12px 0; display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+  .event:last-child { border-bottom:none; }
+  .event-info { flex:1; }
+  .event-title { font-weight:700; font-size:16px; margin-bottom:6px; }
+  .event-meta { color:#666; margin-bottom:8px; }
+  .roles { display:flex; flex-wrap:wrap; gap:8px; }
+  .role-card { background:#f8f9ff; padding:8px; border-radius:8px; min-width:220px; box-shadow:0 1px 4px rgba(0,0,0,0.02); }
+
+  .role-row { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .role-name { font-weight:600; }
+  .role-meta { color:#666; font-size:13px; }
+
+  .apply-btn { background:#4a67ff; border:none; color:white; padding:8px 12px; border-radius:8px; cursor:pointer; }
+  .cancel-btn { background:#d9534f; border:none; color:white; padding:6px 10px; border-radius:8px; cursor:pointer; }
+
+  /* Side panel */
+  .panel { background:white; padding:16px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.03); }
+  .status { margin-bottom:12px; color:#333; }
+
+  /* small badge */
+  .badge { display:inline-block; padding:6px 8px; border-radius:999px; font-size:13px; background:#eef2ff; color:#2b3be0; }
+
+  /* small message */
+  .muted { color:#666; font-size:14px; }
+
+  /* loader */
+  .loader { text-align:center; padding:20px; color:#666; }
+
+</style>
+</head>
+<body>
+<header>
+  <h1>GPSphere — Member Dashboard</h1>
+  <div>
+    <button class="logout" onclick="logout()">Logout</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="welcome" id="welcomeBox">
+    Loading account...
+  </div>
+
+  <div class="grid">
+    <div class="events" id="eventsList">
+      <div class="loader">Loading events…</div>
+    </div>
+
+    <aside class="panel" id="sidePanel">
+      <div class="status" id="myApplicationSummary">
+        Loading your applications…
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="muted">Tips</div>
+        <ul style="padding-left:18px; color:#444;">
+          <li>Members may apply for <b>one role per event</b>.</li>
+          <li>You can cancel a pending application, then apply for another role.</li>
+          <li>Approved roles will appear here and in your event view.</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>
+
+
+<script>
+const API = 'http://localhost:3000/api';
+const PROFILE_API = `${API}/user/profile`;
+
+// state
+let me = null;
+let events = [];
+let myApplicationsMap = {}; // key: eventId -> {application...}
+
+async function boot() {
+  try {
+    // 1) get profile
+    const p = await fetch(PROFILE_API, { credentials: 'include' });
+    if (!p.ok) {
+      // not logged in
+      window.location.href = '/index.html';
+      return;
+    }
+    const profile = await p.json();
+    me = profile;
+
+    // if student (not yet approved) redirect to student dashboard
+   if (
+        me.role === 'student' ||
+        (me.status && me.status.toLowerCase() === 'pending') ||
+        (me.STATUS && me.STATUS.toLowerCase() === 'pending')
+        )
+
+    // fill header box
+    document.getElementById('welcomeBox').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:18px;font-weight:700;">Welcome, ${escapeHtml(me.NAME || me.name || me.NAME)}</div>
+          <div class="muted">Email: ${escapeHtml(me.email || me.EMAIL)}</div>
+        </div>
+        <div>
+          <div class="badge">${escapeHtml(me.role || me.ROLE)}</div>
+        </div>
+      </div>
+    `;
+
+    // 2) load events + my applications
+    await loadMyApplications();
+    await loadEvents();
+
+  } catch (err) {
+    console.error('boot error', err);
+    document.getElementById('eventsList').innerHTML = '<div class="loader">Failed to load — check server</div>';
+  }
+}
+
+/* Escape HTML to prevent XSS */
+function escapeHtml(s) {
+  if (!s && s !== 0) return '';
+  return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+/* Load user's applications (all applications by this user) */
+async function loadMyApplications() {
+  try {
+    // I assume you have route GET /api/user/applications or reuse events endpoint?
+    // We'll ask the API for all event_applications for this user via a small endpoint if present.
+    // If you don't have a dedicated endpoint, we can derive my apps from GET /api/events by scanning applications for this user.
+    // For safety we'll try /api/user/applications first, fallback to scanning events.
+
+    let ok = false;
+    try {
+      const r = await fetch(`${API}/user/applications`, { credentials: 'include' });
+      if (r.ok) {
+        const data = await r.json();
+        // data expected: [ { id, event_id, role_id, status, ... } ]
+        myApplicationsMap = {};
+        data.forEach(a => { myApplicationsMap[a.event_id] = a; });
+        ok = true;
+      }
+    } catch(e) { /* ignore */ }
+
+    if (!ok) {
+      // Fallback: load events and build map by scanning event_applications for current user.
+      // We'll fetch events with roles and counts, then fetch event applications per event (admin route exists but member can't use it).
+      // Better approach: backend endpoint GET /api/user/profile returned user id; we will ask /api/events and then call GET /api/events/:id/applications
+      // But /events/:id/applications is admin-only, so fallback is to add a small endpoint later.
+      // For now, myApplicationsMap will be filled after loading events by checking applications returned from getAllEvents if available.
+      myApplicationsMap = {}; // empty; we will populate after events load
+    }
+  } catch (err) {
+    console.error('loadMyApplications error', err);
+    myApplicationsMap = {};
+  }
+}
+
+/* Load all events and render */
+async function loadEvents() {
+  document.getElementById('eventsList').innerHTML = '<div class="loader">Loading events…</div>';
+
+  try {
+    const res = await fetch(`${API}/events`, { credentials: 'include' });
+    if (!res.ok) {
+      document.getElementById('eventsList').innerHTML = '<div class="loader">Failed to load events</div>';
+      return;
+    }
+    events = await res.json();
+    // Fetch approved crew for each role
+  approvedCrewCache = {};
+    for (const ev of events) {
+      for (const r of ev.roles) {
+        try {
+          const res2 = await fetch(`${API}/roles/${r.role_id}/approved`, { credentials: 'include' });
+        if (res2.ok) {
+        approvedCrewCache[r.role_id] = await res2.json();
+      }
+    } catch { }
+  }
+}
+
+
+    // If myApplicationsMap is empty, try to populate from events' roles pending/approved counts:
+    // We need to know for each event whether this user has an application. The server does not currently include per-user flags,
+    // so we request a per-user endpoint (recommended). We'll try a fallback: call GET /api/user/applications again and then use it.
+    try {
+      const r = await fetch(`${API}/user/applications`, { credentials: 'include' });
+      if (r.ok) {
+        const data = await r.json();
+        myApplicationsMap = {};
+        data.forEach(a => { myApplicationsMap[a.event_id] = a; });
+      } else {
+        // If that fails, clear map (we'll let apply buttons be available).
+        // Optionally backend can add an endpoint to include per-user status in GET /api/events.
+      }
+    } catch(e) {
+      // ignore
+    }
+
+    renderEvents();
+    renderSidePanel();
+
+  } catch (err) {
+    console.error('loadEvents error', err);
+    document.getElementById('eventsList').innerHTML = '<div class="loader">Failed to load events</div>';
+  }
+}
+
+/* Render events list */
+function renderEvents() {
+  if (!events || events.length === 0) {
+    document.getElementById('eventsList').innerHTML = '<div class="muted">No events yet</div>';
+    return;
+  }
+
+  let html = '';
+  events.forEach(ev => {
+    html += `
+      <div class="event">
+        <div class="event-info">
+          <div class="event-title">${escapeHtml(ev.event_name)}</div>
+          <div class="event-meta">${escapeHtml(ev.description || '')}</div>
+          <div class="muted">${escapeHtml(ev.event_date || '')} ${escapeHtml(ev.event_time || '')}</div>
+
+          <div style="margin-top:8px;">
+            <div class="roles">
+              ${ev.roles.map(r => {
+                // compute user state for this event
+                const myApp = myApplicationsMap[ev.id];
+                // find if myApp refers to this role
+                let myRoleId = myApp ? myApp.role_id : null;
+                let myStatus = myApp ? myApp.status : null;
+
+                // slots left computation
+                const slotsLeft = (r.slots || 0) - (r.approvedCount || 0);
+
+                // Render a role card with appropriate buttons/states
+                return `
+                  <div class="role-card">
+                    <div class="role-row">
+                      <div>
+                        <div class="role-name">${escapeHtml(r.role_name)}</div>
+                        <div class="role-meta">${r.approvedCount || 0}/${r.slots} approved — ${r.pendingCount || 0} pending</div>
+                        <div class="role-meta">Slots left: ${slotsLeft > 0 ? slotsLeft : 0}</div>
+                        ${renderApprovedCrew(r.role_id)}
+                      <div style="text-align:right;">
+                        ${renderApplyControls(ev.id, r.role_id, myRoleId, myStatus, slotsLeft)}
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  document.getElementById('eventsList').innerHTML = html;
+}
+
+async function fetchApprovedCrew(roleId) {
+  try {
+    const res = await fetch(`${API}/roles/${roleId}/approved`, { credentials: "include" });
+    if (!res.ok) return [];
+    return await res.json(); 
+  } catch {
+    return [];
+  }
+}
+
+// Render list under role section
+function renderApprovedCrew(roleId) {
+  const approved = approvedCrewCache[roleId] || [];
+  if (approved.length === 0) return "<div class='muted'>No approved crew yet.</div>";
+
+  return `
+    <div style="margin-top:8px;">
+      <div style="font-weight:600; margin-bottom:4px;">Approved Crew:</div>
+      ${approved.map(p => `
+        <div class="muted">• ${escapeHtml(p.name)}</div>
+      `).join("")}
+    </div>
+  `;
+}
+
+/* returns HTML for control area for a role card */
+function renderApplyControls(eventId, roleId, myRoleId, myStatus, slotsLeft) {
+  // If user already has an application for this event
+  if (myRoleId) {
+    // if my role is this role
+    if (myRoleId === roleId) {
+      if (myStatus === 'pending') {
+        return `<div><div style="margin-bottom:6px;"><span class="badge">Pending</span></div>
+                <button class="cancel-btn" onclick="cancelApplicationConfirm(${eventId})">Cancel</button></div>`;
+      } else if (myStatus === 'approved') {
+        return `<div><div style="margin-bottom:6px;"><span class="badge">Approved</span></div>
+                <div class="muted">Your confirmed role</div></div>`;
+      } else {
+        // rejected: allow apply
+        return `<button class="apply-btn" onclick="applyForRole(${eventId}, ${roleId})" ${slotsLeft<=0 ? 'disabled' : ''}>Apply</button>`;
+      }
+    } else {
+      // user has an application for another role in same event;
+      // show indicator and block applying to this role
+      return `<div><div style="margin-bottom:6px;"><span class="badge">Applied</span></div>
+              <div class="muted">You have applied for another role</div></div>`;
+    }
+  } else {
+    // user has no application yet for this event
+    if (slotsLeft <= 0) return `<div class="muted">Full</div>`;
+    return `<button class="apply-btn" onclick="applyForRole(${eventId}, ${roleId})">Apply</button>`;
+  }
+}
+
+/* Apply for a role */
+async function applyForRole(eventId, roleId) {
+  try {
+    if (!confirm('Apply for this position?')) return;
+
+    const res = await fetch(`${API}/events/${eventId}/apply`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ role_id: roleId })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || 'Failed to apply');
+      return;
+    }
+    alert('Application submitted — waiting for approval');
+    // reload my apps + events
+    await loadMyApplications();
+    await loadEvents();
+    renderSidePanel();
+  } catch (err) {
+    console.error('applyForRole error', err);
+    alert('Failed to apply');
+  }
+}
+
+/* Cancel application (confirm) - uses new DELETE endpoint */
+async function cancelApplicationConfirm(eventId) {
+  try {
+    if (!confirm("Cancel your pending application?")) return;
+
+    // fetch all my applications
+    const res = await fetch(`${API}/user/applications`, { credentials: 'include' });
+    const apps = await res.json();
+
+    // find the pending one for this event
+    const pending = apps.find(a => a.event_id === eventId && a.status === "pending");
+
+    if (!pending) {
+      alert("No pending application found.");
+      return;
+    }
+
+    const del = await fetch(`${API}/events/applications/${pending.id}`, {
+      method: "DELETE",
+      credentials: "include"
+    });
+
+    const resp = await del.json();
+    if (!del.ok) {
+      alert(resp.error || "Failed to cancel.");
+      return;
+    }
+
+    alert("Application cancelled.");
+
+    await loadMyApplications();
+    await loadEvents();
+    renderSidePanel();
+
+  } catch (err) {
+    console.error("cancelApplicationConfirm error", err);
+    alert("Failed to cancel application.");
+  }
+}
+
+
+/* Render side panel summary */
+function renderSidePanel() {
+  let html = '';
+  // show all of this member's applications (if we have them)
+  const apps = Object.values(myApplicationsMap);
+  if (apps.length === 0) {
+    html = `<div class="muted">You have no applications yet.</div>`;
+  } else {
+    html = '<div><b>Your applications</b></div>';
+    apps.forEach(a => {
+      html += `
+        <div style="margin-top:8px;padding:8px;border-radius:8px;background:#fafafa;">
+          <div><b>${escapeHtml(a.event_name || ('Event #' + a.event_id))}</b></div>
+          <div class="muted">Role: ${escapeHtml(a.role_name || '')} — Status: ${escapeHtml(a.status)}</div>
+        </div>
+      `;
+    });
+  }
+  document.getElementById('myApplicationSummary').innerHTML = html;
+}
+
+/* Logout */
+async function logout() {
+  await fetch('/api/auth/logout', { method:'POST', credentials:'include' });
+  window.location.href = '/homepage.html';
+}
+
+
+let approvedCrewCache = {};
+
+/* Boot on load */
+boot();
+</script>
+<script src="/chatbot.js"></script>
+</body>
+</html>

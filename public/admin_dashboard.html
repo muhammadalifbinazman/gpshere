@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - GPS Student Consumer Movement</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+    
+    <style>
+        /* Admin-specific styling - GPS UTM Maroon Theme */
+        .sidebar {
+            background: linear-gradient(180deg, #8B2346 0%, #6a1b35 100%) !important;
+        }
+        
+        .sidebar-header {
+            background: rgba(212, 164, 55, 0.15) !important;
+            border: 2px solid #D4A437 !important;
+            padding: 25px 20px !important;
+        }
+        
+        .sidebar-header h2 {
+            color: #D4A437 !important;
+            font-size: 24px !important;
+        }
+        
+        .sidebar-header p {
+            background: #D4A437 !important;
+            color: #1a202c !important;
+            padding: 6px 12px !important;
+            border-radius: 15px !important;
+            font-weight: 600 !important;
+        }
+        
+        .sidebar-menu li a {
+            color: rgba(255, 255, 255, 0.9) !important;
+        }
+        
+        .sidebar-menu li a.active,
+        .sidebar-menu li a:hover {
+            background: rgba(212, 164, 55, 0.25) !important;
+            border-left: 4px solid #D4A437 !important;
+            color: white !important;
+        }
+        
+        .dashboard-header {
+            background: linear-gradient(135deg, #8B2346 0%, #3B4A8C 100%) !important;
+            color: white !important;
+        }
+        
+        .dashboard-header h1 {
+            color: white !important;
+        }
+        
+        .admin-header-badge {
+            display: inline-block;
+            background: #D4A437 !important;
+            color: #1a202c !important;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 700;
+            margin-left: 15px;
+            box-shadow: 0 4px 12px rgba(212, 164, 55, 0.4);
+        }
+        
+        .stat-card {
+            border-top: 4px solid #8B2346 !important;
+            background: white;
+        }
+        
+        .stat-icon.blue { background: linear-gradient(135deg, #8B2346, #a84060) !important; }
+        .stat-icon.green { background: linear-gradient(135deg, #3B4A8C, #5a6fb8) !important; }
+        .stat-icon.purple { background: linear-gradient(135deg, #D4A437, #e5b747) !important; }
+        .stat-icon.orange { background: linear-gradient(135deg, #8B2346, #6a1b35) !important; }
+        
+        .btn-primary {
+            background: #D4A437 !important;
+            color: #1a202c !important;
+            font-weight: 600 !important;
+        }
+        
+        .btn-primary:hover {
+            background: #e5b747 !important;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: #3B4A8C !important;
+        }
+        
+        .btn-success:hover {
+            background: #2d3a6f !important;
+        }
+        
+        .card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .badge-admin {
+            background: #8B2346 !important;
+            color: white !important;
+        }
+        
+        .badge-member {
+            background: #3B4A8C !important;
+            color: white !important;
+        }
+        
+        .badge-student {
+            background: #D4A437 !important;
+            color: #1a202c !important;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 25px;
+            border-bottom: 2px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #8B2346 0%, #3B4A8C 100%);
+            color: white;
+            border-radius: 15px 15px 0 0;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .modal-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #8B2346;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .role-input-group {
+            display: grid;
+            grid-template-columns: 2fr 1fr auto;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .feedback-item {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 15px;
+        border-left: 4px solid #D4A437;
+        }
+
+        .feedback-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+        .feedback-rating {
+        color: #D4A437;
+        font-size: 14px;
+    }
+
+        .feedback-item small {
+        color: #777;
+        font-size: 12px;
+    }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="/images/gps-utm-logo.png" alt="GPS UTM Logo" style="height: 65px; width: auto; margin-bottom: 15px; filter: brightness(0) invert(1);">
+                <h2>GPS UTM Admin</h2>
+                <p style="font-size: 10px; opacity: 0.9; margin: 8px 0; color: rgba(255,255,255,0.8);">Student Consumer Movement</p>
+                <p id="userRole">Administrator</p>
+            </div>
+            
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="#" class="active">
+                        <span class="icon">📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#events">
+                        <span class="icon">📚</span>
+                        <span>Program Management</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#users">
+                        <span class="icon">👥</span>
+                        <span>User Management</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#applications">
+                        <span class="icon">📝</span>
+                        <span>Applications</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#analytics">
+                        <span class="icon">📈</span>
+                        <span>Analytics</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#settings">
+                        <span class="icon">⚙️</span>
+                        <span>System Settings</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/profile.html">
+                        <span class="icon">👤</span>
+                        <span>My Profile</span>
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="sidebar-footer">
+                <button onclick="AppUtils.logout()" class="btn btn-danger" style="width: 100%;">
+                    Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="dashboard-main">
+            <!-- Header -->
+            <header class="dashboard-header">
+                <div>
+                    <h1>Admin Control Panel</h1>
+                    <span class="admin-header-badge">Full Access</span>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="showCreateEventModal()">
+                        Create Event
+                    </button>
+                    <div class="user-info">
+                        <div class="user-avatar" id="userAvatar">
+                            <img id="userAvatarImg" src="" alt="Profile" style="display: none; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                            <span id="userAvatarText">A</span>
+                        </div>
+                        <div>
+                            <div style="font-weight: 600;" id="userName">Loading...</div>
+                            <div style="font-size: 12px; color: var(--gray);" id="userEmail"></div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Content -->
+            <div class="dashboard-content">
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon blue">👥</div>
+                        <div class="stat-info">
+                            <h3 id="totalUsers">0</h3>
+                            <p>Total Users</p>
+                            <small style="color: var(--gray); font-size: 12px;" id="userBreakdown">Loading...</small>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon purple">📅</div>
+                        <div class="stat-info">
+                            <h3 id="totalEvents">0</h3>
+                            <p>Total Events</p>
+                            <small style="color: var(--gray); font-size: 12px;" id="upcomingEvents">0 upcoming</small>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card" style="cursor: pointer;" onclick="document.getElementById('users').scrollIntoView({behavior: 'smooth'})">
+                        <div class="stat-icon orange">⏳</div>
+                        <div class="stat-info">
+                            <h3 id="pendingUsers">0</h3>
+                            <p>Pending Approvals</p>
+                            <small style="color: var(--orange); font-size: 12px; font-weight: 600;">⚠️ Requires Action</small>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon green">📝</div>
+                        <div class="stat-info">
+                            <h3 id="totalApplications">0</h3>
+                            <p>Total Applications</p>
+                            <small style="color: var(--gray); font-size: 12px;" id="pendingApplications">0 pending</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Program Management -->
+                <div class="card" id="events">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                        <div>
+                            <h2>📚 Program & Workshop Management</h2>
+                            <p style="color: var(--gray); margin-top: 8px;">Create and manage consumer education programs and workshops</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="showCreateEventModal()" style="white-space: nowrap;">
+                            ➕ Create New Event
+                        </button>
+                    </div>
+                    <div id="eventsList">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+
+                <!-- User Management -->
+                <div class="card" id="users">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                        <h2>User Management</h2>
+                        <div style="display: flex; gap: 10px;">
+                            <select id="userFilter" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border);" onchange="filterUsers()">
+                                <option value="all">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                            <select id="roleFilter" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border);" onchange="filterUsers()">
+                                <option value="all">All Roles</option>
+                                <option value="admin">Admin</option>
+                                <option value="member">Member</option>
+                                <option value="student">Student</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="usersList">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+
+                <!-- Applications -->
+                <div class="card" id="applications">
+                    <h2 style="margin-bottom: 20px;">Event Applications</h2>
+                    <div id="applicationsList">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+
+                <!-- Analytics Section -->
+                <div class="card" id="analytics">
+                    <h2 style="margin-bottom: 20px;">📈 Analytics & Insights</h2>
+                    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                        <div style="padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+                            <h4 style="margin: 0 0 10px 0; opacity: 0.9;">Registration Rate</h4>
+                            <h2 style="margin: 0;" id="registrationRate">0%</h2>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.8;">approval rate</p>
+                        </div>
+                        <div style="padding: 20px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 12px; color: white;">
+                            <h4 style="margin: 0 0 10px 0; opacity: 0.9;">Active Events</h4>
+                            <h2 style="margin: 0;" id="activeEventsCount">0</h2>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.8;">currently active</p>
+                        </div>
+                        <div style="padding: 20px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 12px; color: white;">
+                            <h4 style="margin: 0 0 10px 0; opacity: 0.9;">Application Rate</h4>
+                            <h2 style="margin: 0;" id="applicationRate">0%</h2>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.8;">approval rate</p>
+                        </div>
+                        <div style="padding: 20px; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border-radius: 12px; color: white;">
+                            <h4 style="margin: 0 0 10px 0; opacity: 0.9;">Avg. Event Size</h4>
+                            <h2 style="margin: 0;" id="avgEventSize">0</h2>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.8;">roles per event</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Settings -->
+                <div class="card" id="settings">
+                    <h2 style="margin-bottom: 20px;">⚙️ System Settings</h2>
+                    <div style="padding: 20px; background: var(--light-gray); border-radius: 8px;">
+                        <h4 style="margin: 0 0 15px 0;">⚠️ Admin Controls</h4>
+                        <p style="color: var(--gray); margin-bottom: 20px;">Advanced system settings and controls. Use with caution.</p>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn btn-secondary" onclick="AppUtils.showInfo('Export feature coming soon!')">
+                                Export Data
+                            </button>
+                            <button class="btn btn-secondary" onclick="AppUtils.showInfo('Backup feature coming soon!')">
+                                Backup Database
+                            </button>
+                            <button class="btn btn-secondary" onclick="AppUtils.showInfo('Email settings coming soon!')">
+                                Email Settings
+                            </button>
+                            <button class="btn btn-secondary" onclick="AppUtils.showInfo('System logs feature coming soon!')">
+                                View System Logs
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Event Modal -->
+    <div id="createEventModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create New Event</h2>
+                <button class="modal-close" onclick="closeCreateEventModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="createEventForm">
+                    <div class="form-group">
+                        <label>Event Name *</label>
+                        <input type="text" name="event_name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Description *</label>
+                        <textarea name="description" rows="3" required></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Event Date *</label>
+                            <input type="date" name="event_date" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Event Time *</label>
+                            <input type="time" name="event_time" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Location *</label>
+                        <input type="text" name="location" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Roles</label>
+                        <div id="rolesContainer">
+                            <div class="role-input-group">
+                                <input type="text" placeholder="Role Name" name="role_name_0">
+                                <input type="number" placeholder="Slots" name="role_slots_0" min="1">
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary" onclick="addRoleInput()" style="margin-top: 10px;">
+                            ➕ Add Role
+                        </button>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeCreateEventModal()">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            Create Event
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Edit Event Modal -->
+    <div id="editEventModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Event</h2>
+                <button class="modal-close" onclick="closeEditEventModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="editEventForm">
+                    <input type="hidden" id="editEventId" name="eventId">
+                    
+                    <div class="form-group">
+                        <label>Event Name *</label>
+                        <input type="text" id="editEventName" name="event_name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Description *</label>
+                        <textarea id="editEventDescription" name="description" rows="3" required></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Event Date *</label>
+                            <input type="date" id="editEventDate" name="event_date" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Event Time *</label>
+                            <input type="time" id="editEventTime" name="event_time" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Location *</label>
+                        <input type="text" id="editEventLocation" name="location" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="editEventStatus" name="status">
+                            <option value="ongoing">Ongoing</option>
+                            <option value="finished">Finished</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Roles</label>
+                        <div id="editRolesContainer">
+                            <!-- Roles will be dynamically added here -->
+                        </div>
+                        <button type="button" class="btn btn-secondary" onclick="addEditRoleInput()" style="margin-top: 10px;">
+                            ➕ Add Role
+                        </button>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeEditEventModal()">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            Update Event
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN FEEDBACK MODAL -->
+<div id="adminFeedbackModal" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h2>Event Feedback</h2>
+            <button class="modal-close"
+                onclick="closeAdminFeedbackModal()">×</button>
+        </div>
+
+        <div class="modal-body">
+            <div class="stats-grid" style="margin-bottom: 20px;">
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <h3 id="avgRating">0.0</h3>
+                        <p>Average Rating</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <h3 id="totalFeedback">0</h3>
+                        <p>Total Feedback</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="feedbackList"></div>
+        </div>
+    </div>
+</div>
+
+
+    <!-- JavaScript Files -->
+    <script src="/js/main.js"></script>
+    <script>
+        // Protect this page - only admins can access
+        if (!AppUtils.protectPage(['admin'])) {
+            // Will redirect if not logged in or not an admin
+        }
+
+        let usersData = [];
+        let eventsData = [];
+        let applicationsData = [];
+        let roleCounter = 1;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUserProfile();
+            await loadStats();
+            await loadEvents();
+            await loadUsers();
+            await loadApplications();
+        });
+
+        async function loadUserProfile() {
+            try {
+                const user = await AppUtils.apiRequest('/user/profile');
+                
+                document.getElementById('userName').textContent = user.name;
+                document.getElementById('userEmail').textContent = user.email;
+                
+                // Update avatar - show image if available, otherwise show initials
+                const avatarImg = document.getElementById('userAvatarImg');
+                const avatarText = document.getElementById('userAvatarText');
+                if (user.profile_picture) {
+                    avatarImg.src = user.profile_picture;
+                    avatarImg.style.display = 'block';
+                    avatarText.style.display = 'none';
+                } else {
+                    avatarImg.style.display = 'none';
+                    avatarText.style.display = 'block';
+                    avatarText.textContent = AppUtils.getInitials(user.name);
+                }
+                
+            } catch (error) {
+                AppUtils.showError('Failed to load profile');
+                console.error(error);
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const stats = await AppUtils.apiRequest('/admin/stats');
+                
+                document.getElementById('totalUsers').textContent = stats.totalUsers || 0;
+                document.getElementById('totalEvents').textContent = stats.totalEvents || 0;
+                document.getElementById('pendingUsers').textContent = stats.pendingUsers || 0;
+                document.getElementById('totalApplications').textContent = stats.totalApplications || 0;
+                
+                // Enhanced stats with breakdowns
+                setTimeout(() => {
+                    const adminCount = usersData.filter(u => u.role === 'admin').length;
+                    const memberCount = usersData.filter(u => u.role === 'member').length;
+                    const studentCount = usersData.filter(u => u.role === 'student').length;
+                    document.getElementById('userBreakdown').textContent = `${adminCount} admins • ${memberCount} members • ${studentCount} students`;
+                    
+                    const today = new Date().toISOString().split('T')[0];
+                    const upcoming = eventsData.filter(e => e.event_date >= today).length;
+                    document.getElementById('upcomingEvents').textContent = `${upcoming} upcoming`;
+                    
+                    const pendingApps = applicationsData.filter(a => a.status === 'pending').length;
+                    document.getElementById('pendingApplications').textContent = `${pendingApps} pending review`;
+                }, 500);
+                
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+
+        async function loadEvents() {
+            try {
+                const events = await AppUtils.apiRequest('/events');
+                eventsData = events;
+                
+                if (events.length === 0) {
+                    document.getElementById('eventsList').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📅</div>
+                            <h3>No Events Created</h3>
+                            <p>Create your first event to get started</p>
+                        </div>
+                    `;
+                } else {
+                    renderEvents(events);
+                }
+            } catch (error) {
+                AppUtils.showError('Failed to load events');
+                console.error(error);
+            }
+        }
+
+        function renderEvents(events) {
+            const html = events.map(event => `
+                <div class="event-card">
+                    <div class="event-image">📅</div>
+                    <div class="event-body">
+                        <div class="event-title">${event.event_name}</div>
+                        <div class="event-meta">
+                            <div class="event-meta-item">
+                                <span>${event.location || 'TBA'}</span>
+                            </div>
+                            <div class="event-meta-item">
+                                <span>${AppUtils.formatDate(event.event_date)}</span>
+                            </div>
+                            <div class="event-meta-item">
+                                <span>${event.event_time || 'TBA'}</span>
+                            </div>
+                        </div>
+                        <p style="color: var(--gray); margin-top: 10px;">${event.description || 'No description'}</p>
+                        
+                        ${event.roles && event.roles.length > 0 ? `
+                            <div class="event-roles">
+                                <h4>Roles:</h4>
+                                ${event.roles.map(role => {
+                                    const slotsLeft = (role.slots || 0) - (role.approvedCount || 0);
+                                    const isFull = slotsLeft <= 0;
+                                    return `
+                                    <div class="role-item">
+                                        <span class="role-name">${role.role_name}</span>
+                                        <span class="role-slots" style="color: ${isFull ? '#dc3545' : '#28a745'};">
+                                            ${isFull ? 'Full' : `${slotsLeft} left`} (${role.approvedCount || 0}/${role.slots} approved, ${role.pendingCount || 0} pending)
+                                        </span>
+                                    </div>
+                                `;
+                                }).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        <div class="event-actions">
+                            <button class="btn btn-primary btn-sm"
+                                onclick="editEvent(${event.id})">
+                                Edit
+                            </button>
+                            <button class="btn btn-secondary btn-sm"
+                                onclick="viewEventFeedback(${event.id})">
+                                Feedback
+                            </button>
+                            <button class="btn btn-danger btn-sm"
+                                onclick="deleteEvent(${event.id})">
+                                Delete
+                            </button> 
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('eventsList').innerHTML = `<div class="events-grid">${html}</div>`;
+        }
+
+        async function loadUsers() {
+            try {
+                const users = await AppUtils.apiRequest('/user/all');
+                usersData = users;
+                
+                if (users.length === 0) {
+                    document.getElementById('usersList').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">👥</div>
+                            <h3>No Users Found</h3>
+                        </div>
+                    `;
+                } else {
+                    renderUsers(users);
+                }
+            } catch (error) {
+                AppUtils.showError('Failed to load users');
+                console.error(error);
+            }
+        }
+
+        function filterUsers() {
+            const statusFilter = document.getElementById('userFilter').value;
+            const roleFilter = document.getElementById('roleFilter').value;
+            
+            let filtered = [...usersData];
+            
+            if (statusFilter !== 'all') {
+                filtered = filtered.filter(u => u.status === statusFilter);
+            }
+            
+            if (roleFilter !== 'all') {
+                filtered = filtered.filter(u => u.role === roleFilter);
+            }
+            
+            renderUsers(filtered);
+        }
+        
+        function renderUsers(users) {
+            const html = `
+                <div style="margin-bottom: 15px; padding: 10px; background: rgba(237, 137, 54, 0.1); border-radius: 8px; color: var(--text-dark);">
+                    📊 Showing <strong>${users.length}</strong> of <strong>${usersData.length}</strong> total users
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">ID</th>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Joined</th>
+                                <th style="width: 220px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${users.map(user => `
+                                <tr style="${user.status === 'pending' ? 'background: rgba(237, 137, 54, 0.05);' : ''}">
+                                    <td><strong>#${user.id}</strong></td>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <div style="width: 36px; height: 36px; border-radius: 50%; background: ${user.role === 'admin' ? '#ed8936' : user.role === 'member' ? '#667eea' : '#718096'}; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">
+                                                ${AppUtils.getInitials(user.name)}
+                                            </div>
+                                            <strong>${user.name}</strong>
+                                        </div>
+                                    </td>
+                                    <td>${user.email}</td>
+                                    <td>
+                                        <span class="badge badge-${user.role === 'admin' ? 'danger' : user.role === 'member' ? 'primary' : 'secondary'}">
+                                            ${user.role}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-${user.status === 'approved' ? 'success' : user.status === 'pending' ? 'warning' : 'danger'}">
+                                            ${user.status}
+                                        </span>
+                                    </td>
+                                    <td>${AppUtils.formatDate(user.created_at)}</td>
+                                    <td>
+                                        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                            ${user.status === 'pending' ? `
+                                                <button class="btn btn-success btn-sm" onclick="updateUserStatus(${user.id}, 'approved')" title="Approve User" style="padding: 6px 12px;">
+                                                    Approve
+                                                </button>
+                                                <button class="btn btn-danger btn-sm" onclick="updateUserStatus(${user.id}, 'rejected')" title="Reject User" style="padding: 6px 12px;">
+                                                    Reject
+                                                </button>
+                                            ` : `
+                                                <button class="btn btn-secondary btn-sm" onclick="updateUserStatus(${user.id}, 'pending')" title="Reset to Pending" style="padding: 6px 12px;">
+                                                    Reset
+                                                </button>
+                                            `}
+                                            <button class="btn btn-danger btn-sm" onclick="deleteUser(${user.id}, '${user.name}')" title="Delete User" style="padding: 6px 12px;">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            document.getElementById('usersList').innerHTML = html;
+        }
+
+        async function loadApplications() {
+            try {
+                const applications = await AppUtils.apiRequest('/user/admin/applications');
+                applicationsData = applications;
+                
+                if (applications.length === 0) {
+                    document.getElementById('applicationsList').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📝</div>
+                            <h3>No Applications Yet</h3>
+                        </div>
+                    `;
+                } else {
+                    renderApplications(applications);
+                }
+                
+                // Update analytics
+                updateAnalytics();
+            } catch (error) {
+                AppUtils.showError('Failed to load applications');
+                console.error(error);
+            }
+        }
+        
+        function updateAnalytics() {
+            // Registration approval rate
+            const totalUsers = usersData.length;
+            const approvedUsers = usersData.filter(u => u.status === 'approved').length;
+            const regRate = totalUsers > 0 ? Math.round((approvedUsers / totalUsers) * 100) : 0;
+            document.getElementById('registrationRate').textContent = regRate + '%';
+            
+            // Active events (upcoming events)
+            const today = new Date().toISOString().split('T')[0];
+            const activeEvents = eventsData.filter(e => e.event_date >= today).length;
+            document.getElementById('activeEventsCount').textContent = activeEvents;
+            
+            // Application approval rate
+            const totalApps = applicationsData.length;
+            const approvedApps = applicationsData.filter(a => a.status === 'approved').length;
+            const appRate = totalApps > 0 ? Math.round((approvedApps / totalApps) * 100) : 0;
+            document.getElementById('applicationRate').textContent = appRate + '%';
+            
+            // Average event size (roles per event)
+            const totalRoles = eventsData.reduce((sum, event) => sum + (event.roles ? event.roles.length : 0), 0);
+            const avgSize = eventsData.length > 0 ? Math.round(totalRoles / eventsData.length) : 0;
+            document.getElementById('avgEventSize').textContent = avgSize;
+        }
+
+        function renderApplications(applications) {
+            const html = `
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Applicant</th>
+                                <th>Event</th>
+                                <th>Role</th>
+                                <th>Applied On</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${applications.map(app => `
+                                <tr>
+                                    <td>${app.user_name}</td>
+                                    <td>${app.event_name}</td>
+                                    <td>${app.role_name}</td>
+                                    <td>${AppUtils.formatDate(app.created_at)}</td>
+                                    <td>
+                                        <span class="badge badge-${app.status === 'approved' ? 'success' : app.status === 'pending' ? 'warning' : 'danger'}">
+                                            ${app.status}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        ${app.status === 'pending' ? `
+                                            <button class="btn btn-success btn-sm" onclick="updateApplicationStatus(${app.id}, 'approved')">
+                                                Approve
+                                            </button>
+                                            <button class="btn btn-danger btn-sm" onclick="updateApplicationStatus(${app.id}, 'rejected')">
+                                                Reject
+                                            </button>
+                                        ` : app.status === 'rejected' ? `
+                                            <button class="btn btn-primary btn-sm" onclick="updateApplicationStatus(${app.id}, 'pending')" title="Reinstate Application">
+                                                Reinstate
+                                            </button>
+                                            <button class="btn btn-success btn-sm" onclick="updateApplicationStatus(${app.id}, 'approved')" title="Approve Application">
+                                                Approve
+                                            </button>
+                                        ` : app.status === 'approved' ? `
+                                            <button class="btn btn-warning btn-sm" onclick="updateApplicationStatus(${app.id}, 'pending')" title="Reset to Pending">
+                                                Reset
+                                            </button>
+                                            <button class="btn btn-danger btn-sm" onclick="updateApplicationStatus(${app.id}, 'rejected')" title="Reject Application">
+                                                Reject
+                                            </button>
+                                        ` : `
+                                            <button class="btn btn-secondary btn-sm" disabled>
+                                                ${app.status}
+                                            </button>
+                                        `}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            document.getElementById('applicationsList').innerHTML = html;
+        }
+
+        // Modal Functions
+        function showCreateEventModal() {
+            document.getElementById('createEventModal').classList.add('active');
+        }
+
+        function closeCreateEventModal() {
+            document.getElementById('createEventModal').classList.remove('active');
+            document.getElementById('createEventForm').reset();
+            roleCounter = 1;
+            document.getElementById('rolesContainer').innerHTML = `
+                <div class="role-input-group">
+                    <input type="text" placeholder="Role Name" name="role_name_0">
+                    <input type="number" placeholder="Slots" name="role_slots_0" min="1">
+                </div>
+            `;
+        }
+
+        function addRoleInput() {
+            const container = document.getElementById('rolesContainer');
+            const roleGroup = document.createElement('div');
+            roleGroup.className = 'role-input-group';
+            roleGroup.innerHTML = `
+                <input type="text" placeholder="Role Name" name="role_name_${roleCounter}">
+                <input type="number" placeholder="Slots" name="role_slots_${roleCounter}" min="1">
+            `;
+            container.appendChild(roleGroup);
+            roleCounter++;
+        }
+
+        // Form Handlers
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('createEventForm').addEventListener('submit', handleCreateEvent);
+        });
+
+        async function handleCreateEvent(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const eventData = {
+                event_name: formData.get('event_name'),
+                description: formData.get('description'),
+                event_date: formData.get('event_date'),
+                event_time: formData.get('event_time'),
+                location: formData.get('location'),
+                roles: []
+            };
+            
+            // Collect roles - start from 0 and include roleCounter
+            for (let i = 0; i <= roleCounter; i++) {
+                const roleName = formData.get(`role_name_${i}`);
+                const roleSlots = formData.get(`role_slots_${i}`);
+                
+                if (roleName && roleSlots) {
+                    eventData.roles.push({
+                        role_name: roleName,
+                        slots: parseInt(roleSlots)
+                    });
+                }
+            }
+            
+            console.log('Event data:', eventData);
+            
+            try {
+                await AppUtils.apiRequest('/events', 'POST', eventData);
+                
+                AppUtils.showSuccess('Event created successfully!');
+                closeCreateEventModal();
+                await loadEvents();
+                await loadStats();
+                
+            } catch (error) {
+                AppUtils.showError(error.message || 'Failed to create event');
+            }
+        }
+
+        async function editEvent(eventId) {
+            try {
+                AppUtils.showLoader();
+                
+                // Fetch event details
+                const event = await AppUtils.apiRequest(`/events/${eventId}`);
+                
+                // Populate edit form
+                document.getElementById('editEventId').value = event.id;
+                document.getElementById('editEventName').value = event.event_name;
+                document.getElementById('editEventDescription').value = event.description || '';
+                
+                // Format date for input (YYYY-MM-DD)
+                const eventDate = new Date(event.event_date);
+                const formattedDate = eventDate.toISOString().split('T')[0];
+                document.getElementById('editEventDate').value = formattedDate;
+                
+                // Format time for input (HH:MM)
+                let formattedTime = '';
+                if (event.event_time) {
+                    const timeParts = event.event_time.split(':');
+                    formattedTime = `${timeParts[0]}:${timeParts[1]}`;
+                }
+                document.getElementById('editEventTime').value = formattedTime;
+                
+                document.getElementById('editEventLocation').value = event.location || '';
+                document.getElementById('editEventStatus').value = event.status || 'ongoing';
+                
+                // Populate roles
+                const rolesContainer = document.getElementById('editRolesContainer');
+                rolesContainer.innerHTML = '';
+                
+                if (event.roles && event.roles.length > 0) {
+                    event.roles.forEach((role) => {
+                        const roleGroup = document.createElement('div');
+                        roleGroup.className = 'role-input-group';
+                        roleGroup.setAttribute('data-role-id', role.id || '');
+                        roleGroup.innerHTML = `
+                            <input type="text" placeholder="Role Name" class="edit-role-name" value="${role.role_name}" required>
+                            <input type="number" placeholder="Slots" class="edit-role-slots" value="${role.slots}" min="1" required>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="removeEditRoleInput(this)" style="padding: 5px 10px;">×</button>
+                        `;
+                        rolesContainer.appendChild(roleGroup);
+                    });
+                } else {
+                    // Add one empty role input
+                    addEditRoleInput();
+                }
+                
+                // Show edit modal
+                document.getElementById('editEventModal').classList.add('active');
+                
+            } catch (error) {
+                AppUtils.showError(error.message || 'Failed to load event details');
+                console.error(error);
+            } finally {
+                AppUtils.hideLoader();
+            }
+        }
+
+        function closeEditEventModal() {
+            document.getElementById('editEventModal').classList.remove('active');
+            document.getElementById('editEventForm').reset();
+            document.getElementById('editRolesContainer').innerHTML = '';
+        }
+
+        function addEditRoleInput() {
+            const container = document.getElementById('editRolesContainer');
+            const roleGroup = document.createElement('div');
+            roleGroup.className = 'role-input-group';
+            roleGroup.setAttribute('data-role-id', ''); // New role, no ID
+            roleGroup.innerHTML = `
+                <input type="text" placeholder="Role Name" class="edit-role-name" required>
+                <input type="number" placeholder="Slots" class="edit-role-slots" min="1" required>
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeEditRoleInput(this)" style="padding: 5px 10px;">×</button>
+            `;
+            container.appendChild(roleGroup);
+        }
+
+        function removeEditRoleInput(button) {
+            button.parentElement.remove();
+        }
+
+        // Handle edit event form submission
+        document.getElementById('editEventForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const eventId = formData.get('eventId');
+            
+            const eventData = {
+                event_name: formData.get('event_name'),
+                description: formData.get('description'),
+                event_date: formData.get('event_date'),
+                event_time: formData.get('event_time'),
+                location: formData.get('location'),
+                status: formData.get('status') || 'ongoing',
+                roles: []
+            };
+            
+            // Collect roles
+            const roleInputs = document.querySelectorAll('#editRolesContainer .role-input-group');
+            roleInputs.forEach((group) => {
+                const roleId = group.getAttribute('data-role-id');
+                const roleName = group.querySelector('.edit-role-name')?.value;
+                const roleSlots = group.querySelector('.edit-role-slots')?.value;
+                
+                if (roleName && roleSlots) {
+                    eventData.roles.push({
+                        id: roleId || null, // Include id if it's an existing role
+                        role_name: roleName.trim(),
+                        slots: parseInt(roleSlots)
+                    });
+                }
+            });
+            
+            try {
+                AppUtils.showLoader();
+                
+                await AppUtils.apiRequest(`/events/${eventId}`, 'PUT', eventData);
+                
+                AppUtils.showSuccess('Event updated successfully!');
+                closeEditEventModal();
+                await loadEvents();
+                await loadStats();
+                
+            } catch (error) {
+                AppUtils.showError(error.message || 'Failed to update event');
+            } finally {
+                AppUtils.hideLoader();
+            }
+        });
+
+        async function deleteEvent(eventId) {
+            if (!confirm('Are you sure you want to delete this event?')) return;
+            
+            try {
+                await AppUtils.apiRequest(`/events/${eventId}`, 'DELETE');
+                
+                AppUtils.showSuccess('Event deleted successfully');
+                await loadEvents();
+                await loadStats();
+                
+            } catch (error) {
+                AppUtils.showError(error.message || 'Failed to delete event');
+            }
+        }
+
+        async function updateUserStatus(userId, status) {
+            try {
+                await AppUtils.apiRequest(`/user/${userId}`, 'PUT', { status });
+                
+                AppUtils.showSuccess(`User ${status} successfully`);
+                await loadUsers();
+                await loadStats();
+                
+            } catch (error) {
+                AppUtils.showError(error.message || 'Failed to update user status');
+            }
+        }
+
+        async function deleteUser(userId, userName) {
+            if (!confirm(`Are you sure you want to delete user "${userName}"?\n\nThis action cannot be undone and will permanently remove:\n- User account\n- All event applications\n- All event feedback\n- Profile picture\n\nThis action is irreversible!`)) {
+                return;
+            }
+            
+            try {
+                AppUtils.showLoader();
+                await AppUtils.apiRequest(`/user/${userId}`, 'DELETE');
+                
+                AppUtils.showSuccess(`User "${userName}" deleted successfully`);
+                await loadUsers();
+                await loadStats();
+                
+            } catch (error) {
+                AppUtils.showError(error.message || 'Failed to delete user');
+            } finally {
+                AppUtils.hideLoader();
+            }
+        }
+
+        async function updateApplicationStatus(applicationId, status) {
+            try {
+                await AppUtils.apiRequest(`/events/applications/${applicationId}`, 'PUT', { status });
+                
+                AppUtils.showSuccess(`Application ${status} successfully`);
+                await loadApplications();
+                await loadStats();
+                
+            } catch (error) {
+                AppUtils.showError(error.message || 'Failed to update application status');
+            }
+        }
+
+        async function viewEventFeedback(eventId) {
+            if (!eventId) {
+                AppUtils.showError('Invalid event ID');
+                return;
+            }
+            
+            try {
+                AppUtils.showLoader();
+                console.log('Loading feedback for event:', eventId);
+
+                const data = await AppUtils.apiRequest(
+                    `/events/${eventId}/feedback`
+                );
+
+                console.log('Feedback data received:', data);
+
+                // Update average rating
+                const avgRating = data.averageRating ? parseFloat(data.averageRating) : 0;
+                document.getElementById('avgRating').textContent = avgRating.toFixed(1);
+
+                // Update total feedback count
+                document.getElementById('totalFeedback').textContent = data.totalFeedback || 0;
+
+                // Display feedback list
+                if (!data.feedback || data.feedback.length === 0) {
+                    document.getElementById('feedbackList').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">💬</div>
+                            <h3>No Feedback Yet</h3>
+                            <p>No members have submitted feedback for this event</p>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('feedbackList').innerHTML =
+                        data.feedback.map(f => `
+                            <div class="feedback-item">
+                                <div class="feedback-header">
+                                    <strong>${f.name || 'Anonymous'}</strong>
+                                    <span class="feedback-rating">
+                                        ${'★'.repeat(f.rating || 0)}${'☆'.repeat(5 - (f.rating || 0))}
+                                    </span>
+                                </div>
+                                <p>${f.comment || '<em>No comment</em>'}</p>
+                                <small>${f.created_at ? AppUtils.formatDate(f.created_at) : ''}</small>
+                            </div>
+                        `).join('');
+                }
+
+                // Show modal
+                document.getElementById('adminFeedbackModal').classList.add('active');
+
+            } catch (error) {
+                console.error('Error loading feedback:', error);
+                AppUtils.showError(error.message || 'Failed to load feedback');
+            } finally {
+                AppUtils.hideLoader();
+            }
+        }
+
+function closeAdminFeedbackModal() {
+    const modal = document.getElementById('adminFeedbackModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+</script>
+
+    <!-- Load Chatbot -->
+    <script src="/chatbot.js"></script>
+    <script>
+        if (typeof initChatbot === 'function') {
+            initChatbot();
+        }
+    </script>
+</body>
+</html>

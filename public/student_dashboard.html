@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - GPS Student Consumer Movement</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+    
+    <style>
+        /* GPS UTM Student Theme */
+        .sidebar {
+            background: linear-gradient(180deg, #D4A437 0%, #b8892f 100%) !important;
+        }
+        .sidebar-header {
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3) !important;
+        }
+        .sidebar-header h2 {
+            color: #1a202c !important;
+            font-weight: 700 !important;
+        }
+        .sidebar-header p {
+            color: rgba(26, 32, 44, 0.8) !important;
+        }
+        .sidebar-menu a {
+            color: rgba(26, 32, 44, 0.85) !important;
+        }
+        .sidebar-menu a.active {
+            background: rgba(255, 255, 255, 0.3) !important;
+            color: #1a202c !important;
+            border-left: 4px solid #1a202c !important;
+            font-weight: 600 !important;
+        }
+        .sidebar-menu a:hover {
+            background: rgba(255, 255, 255, 0.2) !important;
+            color: #1a202c !important;
+        }
+        .dashboard-header {
+            background: linear-gradient(135deg, #D4A437 0%, #3B4A8C 100%) !important;
+            color: white !important;
+        }
+        .dashboard-header h1 {
+            color: white !important;
+        }
+        .stat-card {
+            border-top: 3px solid #D4A437 !important;
+        }
+        .btn-primary {
+            background: #3B4A8C !important;
+            color: white !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header" style="padding: 25px 20px;">
+                <img src="/images/gps-utm-logo.png" alt="GPS UTM Logo" style="height: 60px; width: auto; margin-bottom: 15px;">
+                <h2>GPS UTM</h2>
+                <p style="font-size: 11px; opacity: 0.9; margin: 5px 0;">Student Consumer Movement</p>
+                <p id="userRole" style="background: #1a202c; color: white; padding: 6px 12px; border-radius: 15px; margin-top: 10px; display: inline-block; font-weight: 600;">Student</p>
+            </div>
+            
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="#" class="active">
+                        <span class="icon">📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#events">
+                        <span class="icon">📚</span>
+                        <span>View Programs</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/profile.html">
+                        <span class="icon">👤</span>
+                        <span>My Profile</span>
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="sidebar-footer">
+                <button onclick="AppUtils.logout()" class="btn btn-danger" style="width: 100%;">
+                    Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="dashboard-main">
+            <!-- Header -->
+            <header class="dashboard-header">
+                <h1>Student Dashboard</h1>
+                <div class="header-actions">
+                    <div class="user-info">
+                        <div class="user-avatar" id="userAvatar">
+                            <img id="userAvatarImg" src="" alt="Profile" style="display: none; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                            <span id="userAvatarText">S</span>
+                        </div>
+                        <div>
+                            <div style="font-weight: 600;" id="userName">Loading...</div>
+                            <div style="font-size: 12px; color: var(--gray);" id="userEmail"></div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Content -->
+            <div class="dashboard-content">
+                <!-- Pending Status Alert -->
+                <div id="pendingAlert" class="alert alert-warning" style="display: none;">
+                    <h3>Account Pending Approval</h3>
+                    <p>Welcome to GPS - Student Consumer Movement! Your account is currently under review. Once approved, you'll be able to join our consumer education programs and workshops. This usually takes 1-2 business days.</p>
+                </div>
+
+                <!-- Approved Status Alert -->
+                <div id="approvedAlert" class="alert alert-success" style="display: none;">
+                    <h3>✅ Account Approved!</h3>
+                    <p>Congratulations! Your account has been approved. You can now join GPS consumer education programs and workshops to become a smart, ethical, and responsible consumer.</p>
+                    <button class="btn btn-primary" onclick="redirectToMemberDashboard()">
+                        Go to Member Dashboard
+                    </button>
+                </div>
+
+                <!-- Rejected Status Alert -->
+                <div id="rejectedAlert" class="alert alert-danger" style="display: none;">
+                    <h3>Account Rejected</h3>
+                    <p>Unfortunately, your account application was not approved. Please contact support for more information.</p>
+                </div>
+
+                <!-- Account Information -->
+                <div class="card" id="profile">
+                    <h2 style="margin-bottom: 20px;">👤 Account Information</h2>
+                    <div class="profile-info">
+                        <div class="profile-detail">
+                            <label>Name</label>
+                            <p id="profileName">Loading...</p>
+                        </div>
+                        
+                        <div class="profile-detail">
+                            <label>Email</label>
+                            <p id="profileEmail">Loading...</p>
+                        </div>
+                        
+                        <div class="profile-detail">
+                            <label>Role</label>
+                            <p><span class="badge badge-secondary" id="profileRole">student</span></p>
+                        </div>
+                        
+                        <div class="profile-detail">
+                            <label>Account Status</label>
+                            <p><span class="badge" id="profileStatus">Loading...</span></p>
+                        </div>
+                        
+                        <div class="profile-detail">
+                            <label>Joined</label>
+                            <p id="profileJoined">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Available Programs (Read-Only) -->
+                <div class="card" id="events">
+                    <h2 style="margin-bottom: 20px;">📚 Upcoming Consumer Education Programs</h2>
+                    <p style="color: var(--gray); margin-bottom: 20px;">
+                        Explore our consumer education programs and workshops below. Once your account is approved, you'll be able to join these programs to learn about consumer rights, smart decision making, and responsible consumption.
+                    </p>
+                    <div id="eventsList" class="events-grid">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="/js/main.js"></script>
+    <script>
+        // Protect this page - only students can access
+        if (!AppUtils.protectPage(['student'])) {
+            // Will redirect if not logged in or not a student
+        }
+
+        let userStatus = 'pending';
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUserProfile();
+            await loadEvents();
+        });
+
+        async function loadUserProfile() {
+            try {
+                const user = await AppUtils.apiRequest('/user/profile');
+                
+                // Update header
+                document.getElementById('userName').textContent = user.name;
+                document.getElementById('userEmail').textContent = user.email;
+                
+                // Update avatar - show image if available, otherwise show initials
+                const avatarImg = document.getElementById('userAvatarImg');
+                const avatarText = document.getElementById('userAvatarText');
+                if (user.profile_picture) {
+                    avatarImg.src = user.profile_picture;
+                    avatarImg.style.display = 'block';
+                    avatarText.style.display = 'none';
+                } else {
+                    avatarImg.style.display = 'none';
+                    avatarText.style.display = 'block';
+                    avatarText.textContent = AppUtils.getInitials(user.name);
+                }
+                
+                // Update profile section
+                document.getElementById('profileName').textContent = user.name;
+                document.getElementById('profileEmail').textContent = user.email;
+                document.getElementById('profileRole').textContent = user.role;
+                document.getElementById('profileJoined').textContent = AppUtils.formatDate(user.created_at);
+                
+                // Update status
+                userStatus = user.status;
+                const statusBadge = document.getElementById('profileStatus');
+                statusBadge.textContent = user.status;
+                statusBadge.className = `badge badge-${user.status === 'approved' ? 'success' : user.status === 'pending' ? 'warning' : 'danger'}`;
+                
+                // Show appropriate alert based on status
+                if (user.status === 'pending') {
+                    document.getElementById('pendingAlert').style.display = 'block';
+                } else if (user.status === 'approved') {
+                    document.getElementById('approvedAlert').style.display = 'block';
+                } else if (user.status === 'rejected') {
+                    document.getElementById('rejectedAlert').style.display = 'block';
+                }
+                
+            } catch (error) {
+                AppUtils.showError('Failed to load profile');
+                console.error(error);
+            }
+        }
+
+        async function loadEvents() {
+            try {
+                const events = await AppUtils.apiRequest('/events');
+                
+                if (events.length === 0) {
+                    document.getElementById('eventsList').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📅</div>
+                            <h3>No Events Available</h3>
+                            <p>Check back later for upcoming events</p>
+                        </div>
+                    `;
+                } else {
+                    renderEvents(events);
+                }
+            } catch (error) {
+                AppUtils.showError('Failed to load events');
+                console.error(error);
+            }
+        }
+
+        function renderEvents(events) {
+            const html = events.map(event => `
+                <div class="event-card">
+                    <div class="event-image">📅</div>
+                    <div class="event-body">
+                        <div class="event-title">${event.event_name}</div>
+                        <div class="event-meta">
+                            <div class="event-meta-item">
+                                <span>${event.location || 'TBA'}</span>
+                            </div>
+                            <div class="event-meta-item">
+                                <span>${AppUtils.formatDate(event.event_date)}</span>
+                            </div>
+                            <div class="event-meta-item">
+                                <span>${event.event_time || 'TBA'}</span>
+                            </div>
+                        </div>
+                        <p style="color: var(--gray); margin-top: 10px;">${event.description || 'No description available'}</p>
+                        
+                        ${event.roles && event.roles.length > 0 ? `
+                            <div class="event-roles">
+                                <h4>Available Roles:</h4>
+                                ${event.roles.map(role => {
+                                    const slotsLeft = (role.slots || 0) - (role.approvedCount || 0);
+                                    const isFull = slotsLeft <= 0;
+                                    return `
+                                    <div class="role-item">
+                                        <span class="role-name">${role.role_name}</span>
+                                        <span class="role-slots" style="color: ${isFull ? '#dc3545' : '#28a745'};">
+                                            ${isFull ? '❌ Full' : `✅ ${slotsLeft} left`} (${role.approvedCount || 0}/${role.slots})
+                                        </span>
+                                    </div>
+                                `;
+                                }).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        <div class="event-actions">
+                            ${userStatus === 'pending' ? `
+                                <button class="btn btn-secondary" disabled>
+                                    Approval Required
+                                </button>
+                            ` : `
+                                <button class="btn btn-primary" onclick="viewEvent(${event.id})">
+                                    View Details & Apply
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('eventsList').innerHTML = html;
+        }
+
+        function redirectToMemberDashboard() {
+            AppUtils.showInfo('Redirecting to member dashboard...');
+            setTimeout(() => {
+                window.location.href = '/member_dashboard.html';
+            }, 1000);
+        }
+
+        async function viewEvent(eventId) {
+            const event = eventsData.find(e => e.id === eventId);
+            if (!event) return;
+            
+            // Check if user is approved
+            if (userStatus !== 'approved') {
+                AppUtils.showWarning('Your account must be approved by an admin before you can apply for events.');
+                return;
+            }
+            
+            // Fetch detailed event info
+            try {
+                const eventDetails = await AppUtils.apiRequest(`/events/${eventId}`);
+                showEventModal(eventDetails);
+            } catch (error) {
+                AppUtils.showError('Failed to load event details');
+                console.error(error);
+            }
+        }
+
+        function showEventModal(event) {
+            const modal = document.getElementById('eventModal');
+            if (!modal) return;
+            
+            document.getElementById('modalEventName').textContent = event.event_name;
+            document.getElementById('modalEventDescription').textContent = event.description || 'No description';
+            document.getElementById('modalEventDate').textContent = AppUtils.formatDate(event.event_date);
+            document.getElementById('modalEventTime').textContent = event.event_time || 'TBA';
+            document.getElementById('modalEventLocation').textContent = event.location || 'TBA';
+            
+            // Display roles
+            const rolesHTML = event.roles && event.roles.length > 0 ? event.roles.map(role => {
+                const slotsLeft = (role.slots || 0) - (role.approvedCount || 0);
+                const isFull = slotsLeft <= 0;
+                return `
+                <div class="role-card">
+                    <div class="role-info">
+                        <h4>${role.role_name}</h4>
+                        <p style="color: var(--gray); margin: 5px 0;">
+                            <strong style="color: ${isFull ? '#dc3545' : '#28a745'};">
+                                ${isFull ? 'Full' : `${slotsLeft} slot${slotsLeft !== 1 ? 's' : ''} left`}
+                            </strong>
+                        </p>
+                        <p style="font-size: 14px; color: var(--gray); margin: 5px 0;">
+                            Total: ${role.slots} | Approved: ${role.approvedCount || 0} | Pending: ${role.pendingCount || 0}
+                        </p>
+                    </div>
+                    <button class="btn btn-primary" onclick="applyForRole(${event.id}, ${role.id})" 
+                            ${isFull ? 'disabled' : ''}>
+                        ${isFull ? 'Full' : 'Apply'}
+                    </button>
+                </div>
+            `;
+            }).join('') : '<p>No roles available</p>';
+            
+            document.getElementById('modalRolesList').innerHTML = rolesHTML;
+            modal.classList.add('active');
+        }
+
+        function closeEventModal() {
+            const modal = document.getElementById('eventModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+
+        async function applyForRole(eventId, roleId) {
+            try {
+                AppUtils.showLoader();
+                await AppUtils.apiRequest(`/events/${eventId}/apply`, 'POST', { role_id: roleId });
+                
+                AppUtils.showSuccess('Application submitted successfully!');
+                closeEventModal();
+                
+            } catch (error) {
+                AppUtils.showError(error.message || 'Failed to submit application');
+            } finally {
+                AppUtils.hideLoader();
+            }
+        }
+    </script>
+
+    <!-- Event Modal -->
+    <div id="eventModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalEventName">Event Details</h2>
+                <button class="modal-close" onclick="closeEventModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="event-details">
+                    <div class="detail-item">
+                        <strong>📝 Description:</strong>
+                        <p id="modalEventDescription">-</p>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <strong>Date:</strong>
+                            <p id="modalEventDate">-</p>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Time:</strong>
+                            <p id="modalEventTime">-</p>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Location:</strong>
+                        <p id="modalEventLocation">-</p>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 25px;">
+                    <h3 style="margin-bottom: 15px; color: #8B2346;">Available Roles</h3>
+                    <div id="modalRolesList" class="roles-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Chatbot -->
+    <script src="/chatbot.js"></script>
+    <script>
+        if (typeof initChatbot === 'function') {
+            initChatbot();
+        }
+    </script>
+    
+    <style>
+        .profile-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .profile-detail {
+            padding: 15px;
+            background: var(--light-gray);
+            border-radius: 8px;
+        }
+        
+        .profile-detail label {
+            display: block;
+            font-size: 12px;
+            color: var(--gray);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .profile-detail p {
+            margin: 0;
+            font-size: 16px;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+        
+        .role-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .role-input-group input {
+            flex: 1;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(-50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            padding: 25px;
+            border-bottom: 2px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #8B2346 0%, #3B4A8C 100%);
+            color: white;
+            border-radius: 15px 15px 0 0;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .modal-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        .event-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .detail-item {
+            margin-bottom: 15px;
+        }
+
+        .detail-item strong {
+            display: block;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .detail-item p {
+            margin: 0;
+            color: #666;
+        }
+
+        .detail-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .roles-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .role-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #D4A437;
+        }
+
+        .role-card h4 {
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+
+        .role-card button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</body>
+</html>

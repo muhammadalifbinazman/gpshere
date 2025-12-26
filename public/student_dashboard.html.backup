@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GPSphere – Student Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f2f4ff;
+        padding: 20px;
+    }
+
+    h1 {
+        text-align: center;
+        margin-top: 10px;
+    }
+
+    .top-bar {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+    }
+
+    .logout-btn {
+        background: #d9534f;
+        color: white;
+        padding: 10px 18px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .card {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        margin-bottom: 25px;
+    }
+
+    .event-item {
+        padding: 12px 0;
+        border-bottom: 1px solid #e6e6e6;
+    }
+
+    .event-item:last-child {
+        border-bottom: none;
+    }
+
+    .note {
+        background: #fff5c4;
+        padding: 12px;
+        border-left: 5px solid #ffcc00;
+        margin-top: 15px;
+        border-radius: 6px;
+    }
+
+</style>
+
+</head>
+<body>
+
+<!-- LOGOUT BUTTON -->
+<div class="top-bar">
+    <button class="logout-btn" onclick="logout()">Logout</button>
+</div>
+
+<h1>🎓 Student Dashboard</h1>
+
+<!-- Profile Section -->
+<div class="card">
+    <h2>Your Profile</h2>
+    <div id="profileBox">Loading...</div>
+
+    <div class="note" id="statusNote">
+        ⏳ Your membership application is still <b>pending</b>.  
+        Once approved, you will become a <b>Member</b>
+    </div>
+</div>
+
+<!-- Events Section -->
+<div class="card">
+    <h2>Available Events</h2>
+    <div id="eventsBox">Loading events...</div>
+</div>
+
+
+<script>
+const API = "http://localhost:3000/api";
+
+/* ---------------- ROLE + STATUS CHECK ---------------- */
+(async () => {
+    const res = await fetch(`${API}/user/profile`, {
+        credentials: "include"
+    });
+
+    const user = await res.json();
+
+    // Not logged in → back to login
+    if (!user.email) {
+        window.location.href = "/login.html";
+        return;
+    }
+
+    // If user is approved → redirect to member dashboard
+    if (user.status === "approved" && user.role === "member") {
+        window.location.href = "/member_dashboard.html";
+        return;
+    }
+
+    // If user is admin (should not be here)
+    if (user.role === "admin") {
+        window.location.href = "/admin_dashboard.html";
+        return;
+    }
+
+    // Load profile + events
+    loadProfile(user);
+    loadEvents();
+})();
+
+/* ---------------- LOAD PROFILE ---------------- */
+function loadProfile(user) {
+    document.getElementById("profileBox").innerHTML = `
+        <p><strong>Name:</strong> ${user.name}</p>
+        <p><strong>Email:</strong> ${user.email}</p>
+        <p><strong>Status:</strong> <b>${user.status}</b></p>
+    `;
+}
+
+/* ---------------- LOAD EVENTS (Read-only) ---------------- */
+async function loadEvents() {
+    const res = await fetch(`${API}/events`, {
+        credentials: "include"
+    });
+
+    const events = await res.json();
+    let html = "";
+
+    events.forEach(e => {
+        html += `
+            <div class="event-item">
+                <strong>${e.event_name}</strong><br>
+                📅 ${e.event_date} — ${e.event_time}<br>
+                📍 ${e.location}<br>
+
+            </div>
+        `;
+    });
+
+    document.getElementById("eventsBox").innerHTML = html;
+}
+
+/* ---------------- LOGOUT ---------------- */
+async function logout() {
+    await fetch(`${API}/auth/logout`, {
+        method: "POST",
+        credentials: "include"
+    });
+
+    window.location.href = "/homepage.html";
+}
+
+</script>
+<script src="/chatbot.js"></script>
+</body>
+</html>
