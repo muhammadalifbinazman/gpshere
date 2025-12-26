@@ -20,11 +20,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Session middleware (like PHP: session_start())
+// Note: MemoryStore warning is safe to ignore for single-process deployments (Render free tier)
 app.use(session({
   secret: process.env.JWT_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24 hours
+  cookie: { 
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    sameSite: 'lax'
+  }
 }));
 
 // Force homepage.html to be the default landing page
