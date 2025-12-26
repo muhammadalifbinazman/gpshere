@@ -3,7 +3,9 @@
 // Common functions used across all pages
 // ============================================
 
-const API_BASE_URL = 'http://localhost:3000/api';
+// Auto-detect API base URL based on current host
+// Works for both localhost and production (Render.com)
+const API_BASE_URL = `${window.location.origin}/api`;
 
 // ============================================
 // API HELPER FUNCTIONS
