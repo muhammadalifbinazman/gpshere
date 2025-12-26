@@ -19,7 +19,7 @@ const getNotifications = async (req, res) => {
       const [notifications] = await conn.query(
         `SELECT id, type, title, message, related_id, is_read, created_at
          FROM notifications
-         WHERE user_id = $1
+         WHERE user_id = ?
          ORDER BY created_at DESC
          LIMIT 50`,
         [userId]
@@ -29,7 +29,7 @@ const getNotifications = async (req, res) => {
       return res.json(notifications);
     } catch (tableError) {
       conn.release();
-      if (tableError.code === '42P01') { // PostgreSQL: relation does not exist
+      if (tableError.code === 'ER_NO_SUCH_TABLE') {
         return res.status(500).json({ 
           error: 'Notifications table not found. Please contact administrator.'
         });
@@ -55,7 +55,7 @@ const getUnreadCount = async (req, res) => {
     
     try {
       const [result] = await conn.query(
-        'SELECT COUNT(*) AS count FROM notifications WHERE user_id = $1 AND is_read = FALSE',
+        'SELECT COUNT(*) AS count FROM notifications WHERE user_id = ? AND is_read = FALSE',
         [userId]
       );
 
@@ -63,7 +63,7 @@ const getUnreadCount = async (req, res) => {
       return res.json({ count: result[0].count || 0 });
     } catch (tableError) {
       conn.release();
-      if (tableError.code === '42P01') { // PostgreSQL: relation does not exist
+      if (tableError.code === 'ER_NO_SUCH_TABLE') {
         return res.json({ count: 0 });
       }
       throw tableError;
@@ -87,7 +87,7 @@ const markAsRead = async (req, res) => {
     const conn = await pool.getConnection();
     
     const [notifications] = await conn.query(
-      'SELECT id FROM notifications WHERE id = $1 AND user_id = $2',
+      'SELECT id FROM notifications WHERE id = ? AND user_id = ?',
       [notificationId, userId]
     );
 
@@ -97,7 +97,7 @@ const markAsRead = async (req, res) => {
     }
 
     await conn.query(
-      'UPDATE notifications SET is_read = TRUE WHERE id = $1',
+      'UPDATE notifications SET is_read = TRUE WHERE id = ?',
       [notificationId]
     );
 
@@ -121,7 +121,7 @@ const markAllAsRead = async (req, res) => {
     const conn = await pool.getConnection();
     
     await conn.query(
-      'UPDATE notifications SET is_read = TRUE WHERE user_id = $1 AND is_read = FALSE',
+      'UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND is_read = FALSE',
       [userId]
     );
 
@@ -140,7 +140,7 @@ const createNotification = async (userId, type, title, message, relatedId = null
     
     await conn.query(
       `INSERT INTO notifications (user_id, type, title, message, related_id, is_read)
-       VALUES ($1, $2, $3, $4, $5, FALSE)`,
+       VALUES (?, ?, ?, ?, ?, FALSE)`,
       [userId, type, title, message, relatedId]
     );
 
@@ -160,7 +160,7 @@ const notifyMembersAboutUpcomingEvents = async () => {
     try {
       await conn.query('SELECT 1 FROM notifications LIMIT 1');
     } catch (tableError) {
-      if (tableError.code === '42P01') { // PostgreSQL: relation does not exist
+      if (tableError.code === 'ER_NO_SUCH_TABLE') {
         console.error('❌ Notifications table does not exist! Please run: node scripts/initDb.js');
         if (conn) conn.release();
         return;
@@ -176,7 +176,7 @@ const notifyMembersAboutUpcomingEvents = async () => {
     const [upcomingEvents] = await conn.query(
       `SELECT id, event_name, description, event_date, event_time, location
        FROM events
-       WHERE event_date >= $1 AND event_date <= $2 AND status = 'ongoing'
+       WHERE event_date >= ? AND event_date <= ? AND status = 'ongoing'
        ORDER BY event_date ASC`,
       [today.toISOString().split('T')[0], nextWeek.toISOString().split('T')[0]]
     );
@@ -232,15 +232,15 @@ const notifyMembersAboutUpcomingEvents = async () => {
       for (const member of members) {
         const [existing] = await conn.query(
           `SELECT id FROM notifications 
-           WHERE user_id = $1 AND type = 'upcoming_event' AND related_id = $2 
-           AND DATE(created_at) = CURRENT_DATE`,
+           WHERE user_id = ? AND type = 'upcoming_event' AND related_id = ? 
+           AND DATE(created_at) = CURDATE()`,
           [member.id, event.id]
         );
         
         if (existing.length === 0) {
           await conn.query(
             `INSERT INTO notifications (user_id, type, title, message, related_id, is_read)
-             VALUES ($1, 'upcoming_event', $2, $3, $4, FALSE)`,
+             VALUES (?, 'upcoming_event', ?, ?, ?, FALSE)`,
             [member.id, title, message, event.id]
           );
           totalNotifications++;
@@ -267,7 +267,7 @@ const createNotificationsForAllUsers = async (type, title, message, relatedId = 
     try {
       await conn.query('SELECT 1 FROM notifications LIMIT 1');
     } catch (tableError) {
-      if (tableError.code === '42P01') { // PostgreSQL: relation does not exist
+      if (tableError.code === 'ER_NO_SUCH_TABLE') {
         console.error('❌ Notifications table does not exist! Please run: node scripts/initDb.js');
         if (conn) conn.release();
         return;
@@ -302,7 +302,7 @@ const createNotificationsForAllUsers = async (type, title, message, relatedId = 
       try {
         await conn.query(
           `INSERT INTO notifications (user_id, type, title, message, related_id, is_read)
-           VALUES ($1, $2, $3, $4, $5, FALSE)`,
+           VALUES (?, ?, ?, ?, ?, FALSE)`,
           [user.id, type, title, message, relatedId]
         );
         successCount++;

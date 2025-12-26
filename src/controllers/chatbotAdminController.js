@@ -25,7 +25,7 @@ const getKnowledgeById = async (req, res) => {
     const { id } = req.params;
 
     const [entries] = await pool.query(
-      "SELECT * FROM chatbot_knowledge WHERE id = $1",
+      "SELECT * FROM chatbot_knowledge WHERE id = ?",
       [id]
     );
 
@@ -54,7 +54,7 @@ const createKnowledge = async (req, res) => {
 
     // Check if category already exists
     const [existing] = await pool.query(
-      "SELECT id FROM chatbot_knowledge WHERE category = $1",
+      "SELECT id FROM chatbot_knowledge WHERE category = ?",
       [category]
     );
 
@@ -66,7 +66,7 @@ const createKnowledge = async (req, res) => {
 
     // Insert new entry
     const [result] = await pool.query(
-      "INSERT INTO chatbot_knowledge (category, keywords, response, suggestions, priority, is_active) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+      "INSERT INTO chatbot_knowledge (category, keywords, response, suggestions, priority, is_active) VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
       [
         category,
         keywords || '',
@@ -79,8 +79,8 @@ const createKnowledge = async (req, res) => {
 
     // Fetch the created entry
     const [newEntry] = await pool.query(
-      "SELECT * FROM chatbot_knowledge WHERE id = $1",
-      [result[0].id]
+      "SELECT * FROM chatbot_knowledge WHERE id = ?",
+      [result.insertId]
     );
 
     return res.status(201).json({
@@ -101,7 +101,7 @@ const updateKnowledge = async (req, res) => {
 
     // Check if entry exists
     const [existing] = await pool.query(
-      "SELECT id FROM chatbot_knowledge WHERE id = $1",
+      "SELECT id FROM chatbot_knowledge WHERE id = ?",
       [id]
     );
 
@@ -112,7 +112,7 @@ const updateKnowledge = async (req, res) => {
     // If category is being changed, check if new category already exists
     if (category) {
       const [categoryCheck] = await pool.query(
-        "SELECT id FROM chatbot_knowledge WHERE category = $1 AND id != $2",
+        "SELECT id FROM chatbot_knowledge WHERE category = ? AND id != ?",
         [category, id]
       );
 
@@ -126,30 +126,29 @@ const updateKnowledge = async (req, res) => {
     // Build update query dynamically
     const updates = [];
     const values = [];
-    let paramIndex = 1;
 
     if (category !== undefined) {
-      updates.push(`category = $${paramIndex++}`);
+      updates.push('category = ?');
       values.push(category);
     }
     if (keywords !== undefined) {
-      updates.push(`keywords = $${paramIndex++}`);
+      updates.push('keywords = ?');
       values.push(keywords);
     }
     if (response !== undefined) {
-      updates.push(`response = $${paramIndex++}`);
+      updates.push('response = ?');
       values.push(response);
     }
     if (suggestions !== undefined) {
-      updates.push(`suggestions = $${paramIndex++}`);
+      updates.push('suggestions = ?');
       values.push(suggestions);
     }
     if (priority !== undefined) {
-      updates.push(`priority = $${paramIndex++}`);
+      updates.push('priority = ?');
       values.push(priority);
     }
     if (is_active !== undefined) {
-      updates.push(`is_active = $${paramIndex++}`);
+      updates.push('is_active = ?');
       values.push(is_active);
     }
 
@@ -158,16 +157,15 @@ const updateKnowledge = async (req, res) => {
     }
 
     values.push(id);
-    const idParam = `$${paramIndex}`;
 
     await pool.query(
-      `UPDATE chatbot_knowledge SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ${idParam}`,
+      `UPDATE chatbot_knowledge SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP WHERE id = ?`,
       values
     );
 
     // Fetch updated entry
     const [updatedEntry] = await pool.query(
-      "SELECT * FROM chatbot_knowledge WHERE id = $1",
+      "SELECT * FROM chatbot_knowledge WHERE id = ?",
       [id]
     );
 
@@ -188,7 +186,7 @@ const deleteKnowledge = async (req, res) => {
 
     // Check if entry exists
     const [existing] = await pool.query(
-      "SELECT id FROM chatbot_knowledge WHERE id = $1",
+      "SELECT id FROM chatbot_knowledge WHERE id = ?",
       [id]
     );
 
@@ -197,7 +195,7 @@ const deleteKnowledge = async (req, res) => {
     }
 
     await pool.query(
-      "DELETE FROM chatbot_knowledge WHERE id = $1",
+      "DELETE FROM chatbot_knowledge WHERE id = ?",
       [id]
     );
 
@@ -215,7 +213,7 @@ const toggleKnowledgeStatus = async (req, res) => {
 
     // Get current status
     const [entries] = await pool.query(
-      "SELECT is_active FROM chatbot_knowledge WHERE id = $1",
+      "SELECT is_active FROM chatbot_knowledge WHERE id = ?",
       [id]
     );
 
@@ -226,7 +224,7 @@ const toggleKnowledgeStatus = async (req, res) => {
     const newStatus = !entries[0].is_active;
 
     await pool.query(
-      "UPDATE chatbot_knowledge SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+      "UPDATE chatbot_knowledge SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
       [newStatus, id]
     );
 

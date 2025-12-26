@@ -1,8 +1,9 @@
 // ============================================
-// 📋 DATABASE INITIALIZATION CONTROLLER - PostgreSQL
+// 📋 DATABASE INITIALIZATION CONTROLLER
 // ============================================
 // One-time database initialization endpoint
 // SECURITY: Only allow in development or with secret token
+// Configured for external MySQL services (PlanetScale, Railway, etc.)
 
 const bcrypt = require('bcryptjs');
 const pool = require('../config/database');
@@ -23,59 +24,34 @@ async function initializeDatabase(req, res) {
   try {
     console.log('🔄 Starting database initialization via API...');
     
-    // Get connection from pool (PostgreSQL compatibility wrapper)
+    // Get connection from pool
     conn = await pool.getConnection();
-
-    // Helper function to check if column exists
-    async function columnExists(tableName, columnName) {
-      const [result] = await conn.query(`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = $1 AND column_name = $2
-      `, [tableName, columnName]);
-      return result && result.length > 0;
-    }
 
     const results = [];
 
     // 1. Create users table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
+        id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         email VARCHAR(100) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
-        role VARCHAR(20) DEFAULT 'student' CHECK (role IN ('student', 'member', 'admin')),
-        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved')),
+        role ENUM('student','member','admin') DEFAULT 'student',
+        status ENUM('pending','approved') DEFAULT 'pending',
         tac_code VARCHAR(10),
-        tac_expiry TIMESTAMP,
+        tac_expiry DATETIME,
         reset_code VARCHAR(10),
-        reset_expiry TIMESTAMP,
-        profile_picture VARCHAR(255) DEFAULT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        reset_expiry DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        profile_picture VARCHAR(255) DEFAULT NULL
       )
     `);
     results.push('✅ Table users created or exists');
 
-    // Ensure reset columns exist
-    if (!(await columnExists('users', 'reset_code'))) {
-      await conn.query('ALTER TABLE users ADD COLUMN reset_code VARCHAR(10)');
-    }
-    if (!(await columnExists('users', 'reset_expiry'))) {
-      await conn.query('ALTER TABLE users ADD COLUMN reset_expiry TIMESTAMP');
-    }
-    results.push('✅ Reset columns ensured on users table');
-
-    // Ensure profile_picture column exists
-    if (!(await columnExists('users', 'profile_picture'))) {
-      await conn.query('ALTER TABLE users ADD COLUMN profile_picture VARCHAR(255) DEFAULT NULL');
-    }
-    results.push('✅ Profile picture column ensured on users table');
-
     // 2. Create events table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS events (
-        id SERIAL PRIMARY KEY,
+        id INT AUTO_INCREMENT PRIMARY KEY,
         event_name VARCHAR(200) NOT NULL,
         description TEXT,
         event_date DATE,
@@ -83,9 +59,9 @@ async function initializeDatabase(req, res) {
         location VARCHAR(150),
         director_needed INT DEFAULT 1,
         helper_needed INT DEFAULT 5,
-        status VARCHAR(20) DEFAULT 'ongoing' CHECK (status IN ('ongoing', 'finished')),
+        status ENUM('ongoing','finished') DEFAULT 'ongoing',
         created_by VARCHAR(100),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
     results.push('✅ Table events created or exists');
@@ -93,7 +69,7 @@ async function initializeDatabase(req, res) {
     // 3. Create event_roles table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS event_roles (
-        id SERIAL PRIMARY KEY,
+        id INT AUTO_INCREMENT PRIMARY KEY,
         event_id INT NOT NULL,
         role_name VARCHAR(100) NOT NULL,
         slots INT DEFAULT 1,
@@ -105,12 +81,12 @@ async function initializeDatabase(req, res) {
     // 4. Create event_applications table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS event_applications (
-        id SERIAL PRIMARY KEY,
+        id INT AUTO_INCREMENT PRIMARY KEY,
         event_id INT NOT NULL,
         role_id INT NOT NULL,
         user_id INT NOT NULL,
-        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
         FOREIGN KEY (role_id) REFERENCES event_roles(id) ON DELETE CASCADE,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -118,15 +94,15 @@ async function initializeDatabase(req, res) {
     `);
     results.push('✅ Table event_applications created or exists');
 
-    // 5. Create event_feedback table
+    // 5. Setup event_feedback table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS event_feedback (
-        id SERIAL PRIMARY KEY,
+        id INT AUTO_INCREMENT PRIMARY KEY,
         event_id INT NOT NULL,
         user_id INT NOT NULL,
         rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
         comment TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         UNIQUE (event_id, user_id)
@@ -137,87 +113,107 @@ async function initializeDatabase(req, res) {
     // 6. Create notifications table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS notifications (
-        id SERIAL PRIMARY KEY,
+        id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         type VARCHAR(50) NOT NULL DEFAULT 'event',
         title VARCHAR(200) NOT NULL,
         message TEXT,
         related_id INT,
         is_read BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
     results.push('✅ Table notifications created or exists');
 
-    // Create indexes for notifications
-    await conn.query(`
-      CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read)
-    `);
-    await conn.query(`
-      CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at)
-    `);
-    results.push('✅ Indexes created for notifications table');
+    // Add indexes if they don't exist
+    try {
+      await conn.query(`
+        CREATE INDEX idx_user_read ON notifications(user_id, is_read)
+      `);
+      results.push('✅ Added index idx_user_read');
+    } catch (err) {
+      if (err.code !== 'ER_DUP_KEYNAME') {
+        throw err;
+      }
+      results.push('ℹ️  Index idx_user_read already exists');
+    }
+
+    try {
+      await conn.query(`
+        CREATE INDEX idx_created_at ON notifications(created_at)
+      `);
+      results.push('✅ Added index idx_created_at');
+    } catch (err) {
+      if (err.code !== 'ER_DUP_KEYNAME') {
+        throw err;
+      }
+      results.push('ℹ️  Index idx_created_at already exists');
+    }
 
     // 7. Create chatbot_knowledge table
     await conn.query(`
       CREATE TABLE IF NOT EXISTS chatbot_knowledge (
-        id SERIAL PRIMARY KEY,
-        category VARCHAR(100) NOT NULL,
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        category VARCHAR(100) NOT NULL UNIQUE,
         keywords TEXT NOT NULL,
         response TEXT NOT NULL,
         suggestions TEXT,
         priority INT DEFAULT 0,
         is_active BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
     results.push('✅ Table chatbot_knowledge created or exists');
 
-    // Create indexes for chatbot_knowledge
-    await conn.query(`
-      CREATE INDEX IF NOT EXISTS idx_chatbot_category ON chatbot_knowledge(category)
-    `);
-    await conn.query(`
-      CREATE INDEX IF NOT EXISTS idx_chatbot_active ON chatbot_knowledge(is_active)
-    `);
-    await conn.query(`
-      CREATE INDEX IF NOT EXISTS idx_chatbot_priority ON chatbot_knowledge(priority)
-    `);
-    results.push('✅ Indexes created for chatbot_knowledge table');
+    // Add indexes if they don't exist
+    try {
+      await conn.query(`
+        CREATE INDEX idx_category ON chatbot_knowledge(category)
+      `);
+      results.push('✅ Added index idx_category');
+    } catch (err) {
+      if (err.code !== 'ER_DUP_KEYNAME') {
+        throw err;
+      }
+      results.push('ℹ️  Index idx_category already exists');
+    }
 
-    // Create trigger function for updated_at (PostgreSQL equivalent of ON UPDATE CURRENT_TIMESTAMP)
-    await conn.query(`
-      CREATE OR REPLACE FUNCTION update_updated_at_column()
-      RETURNS TRIGGER AS $$
-      BEGIN
-        NEW.updated_at = CURRENT_TIMESTAMP;
-        RETURN NEW;
-      END;
-      $$ language 'plpgsql';
-    `);
+    try {
+      await conn.query(`
+        CREATE INDEX idx_active ON chatbot_knowledge(is_active)
+      `);
+      results.push('✅ Added index idx_active');
+    } catch (err) {
+      if (err.code !== 'ER_DUP_KEYNAME') {
+        throw err;
+      }
+      results.push('ℹ️  Index idx_active already exists');
+    }
 
-    // Create trigger for chatbot_knowledge updated_at
-    await conn.query(`
-      DROP TRIGGER IF EXISTS update_chatbot_knowledge_updated_at ON chatbot_knowledge;
-      CREATE TRIGGER update_chatbot_knowledge_updated_at
-      BEFORE UPDATE ON chatbot_knowledge
-      FOR EACH ROW
-      EXECUTE FUNCTION update_updated_at_column();
-    `);
-    results.push('✅ Trigger created for chatbot_knowledge updated_at');
+    try {
+      await conn.query(`
+        CREATE INDEX idx_priority ON chatbot_knowledge(priority)
+      `);
+      results.push('✅ Added index idx_priority');
+    } catch (err) {
+      if (err.code !== 'ER_DUP_KEYNAME') {
+        throw err;
+      }
+      results.push('ℹ️  Index idx_priority already exists');
+    }
 
     // 8. Insert default admin if not exists
     const [admins] = await conn.query(
-      "SELECT * FROM users WHERE email = $1",
+      "SELECT id FROM users WHERE email = ?",
       ['admin@gpsphere.com']
     );
 
     if (admins.length === 0) {
       const hashedPassword = await bcrypt.hash('Admin123!', 10);
       await conn.query(
-        "INSERT INTO users (name, email, password, role, status) VALUES ($1, $2, $3, $4, $5)",
+        "INSERT INTO users (name, email, password, role, status) VALUES (?, ?, ?, ?, ?)",
         ['System Admin', 'admin@gpsphere.com', hashedPassword, 'admin', 'approved']
       );
       results.push('✅ Default admin created (Email: admin@gpsphere.com | Password: Admin123!)');
@@ -247,7 +243,7 @@ async function initializeDatabase(req, res) {
         {
           category: 'registration',
           keywords: 'register,sign up,create account,how to register',
-          response: '📝 **Registration Process:**\n\n1. Click on "Register" or go to the registration page\n2. Fill in your details (name, email, password)\n3. Make sure your password is strong (8+ characters, uppercase, lowercase, number, symbol)\n4. Submit your registration\n5. Wait for admin approval (usually 1-2 business days)\n6. You\'ll receive an email notification once approved!\n\nOnce approved, you\'ll become a GPS member and can participate in events!',
+          response: '📝 **Registration Process:**\n\n1. Click on "Register" or go to the registration page\n2. Fill in your details (name, email, password)\n3. Make sure your password is strong (8+ characters, uppercase, lowercase, number, and symbol)\n4. Submit your registration\n5. Wait for admin approval (usually 1-2 business days)\n6. You\'ll receive an email notification once approved!\n\nOnce approved, you\'ll become a GPS member and can participate in events!',
           suggestions: 'What is TAC?|How do I login?|What happens after registration?',
           priority: 8
         },
@@ -318,7 +314,7 @@ async function initializeDatabase(req, res) {
 
       for (const knowledge of initialKnowledge) {
         await conn.query(
-          "INSERT INTO chatbot_knowledge (category, keywords, response, suggestions, priority) VALUES ($1, $2, $3, $4, $5)",
+          "INSERT INTO chatbot_knowledge (category, keywords, response, suggestions, priority) VALUES (?, ?, ?, ?, ?)",
           [knowledge.category, knowledge.keywords, knowledge.response, knowledge.suggestions, knowledge.priority]
         );
       }

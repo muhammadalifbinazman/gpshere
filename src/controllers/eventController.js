@@ -16,17 +16,17 @@ const getAllEvents = async (req, res) => {
     // 2. Fetch roles + counts for each event
     for (const event of events) {
       const [roles] = await conn.query(
-        "SELECT id AS role_id, role_name, slots FROM event_roles WHERE event_id = $1",
+        "SELECT id AS role_id, role_name, slots FROM event_roles WHERE event_id = ?",
         [event.id]
       );
 
       for (const r of roles) {
         const [approved] = await conn.query(
-          "SELECT COUNT(*) AS cnt FROM event_applications WHERE role_id = $1 AND status = 'approved'",
+          "SELECT COUNT(*) AS cnt FROM event_applications WHERE role_id = ? AND status = 'approved'",
           [r.role_id]
         );
         const [pending] = await conn.query(
-          "SELECT COUNT(*) AS cnt FROM event_applications WHERE role_id = $1 AND status = 'pending'",
+          "SELECT COUNT(*) AS cnt FROM event_applications WHERE role_id = ? AND status = 'pending'",
           [r.role_id]
         );
 
@@ -55,7 +55,7 @@ const getEventById = async (req, res) => {
     const conn = await pool.getConnection();
 
     const [events] = await conn.query(
-      'SELECT * FROM events WHERE id = $1',
+      'SELECT * FROM events WHERE id = ?',
       [eventId]
     );
 
@@ -66,7 +66,7 @@ const getEventById = async (req, res) => {
 
     // Get event roles
     const [roles] = await conn.query(
-      'SELECT * FROM event_roles WHERE event_id = $1',
+      'SELECT * FROM event_roles WHERE event_id = ?',
       [eventId]
     );
 
@@ -99,12 +99,11 @@ const createEvent = async (req, res) => {
     const [result] = await conn.query(
       `INSERT INTO events 
        (event_name, description, event_date, event_time, location, created_by, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'ongoing')
-       RETURNING id`,
+       VALUES (?, ?, ?, ?, ?, ?, 'ongoing')`,
       [event_name, description, event_date, event_time, location, createdBy]
     );
 
-    const eventId = result[0].id;
+    const eventId = result.insertId;
 
     // 2. Insert roles into event_roles
     if (Array.isArray(roles) && roles.length > 0) {
@@ -112,7 +111,7 @@ const createEvent = async (req, res) => {
       for (const r of roles) {
         await conn.query(
           `INSERT INTO event_roles (event_id, role_name, slots)
-           VALUES ($1, $2, $3)`,
+           VALUES (?, ?, ?)`,
           [eventId, r.role_name, r.slots || r.total_needed]
         );
       }
@@ -166,7 +165,7 @@ const updateEvent = async (req, res) => {
 
     // 1. Update event basic info
     await conn.query(
-      'UPDATE events SET event_name = $1, description = $2, event_date = $3, event_time = $4, location = $5, status = $6 WHERE id = $7',
+      'UPDATE events SET event_name = ?, description = ?, event_date = ?, event_time = ?, location = ?, status = ? WHERE id = ?',
       [event_name, description, event_date, event_time, location, status || 'ongoing', eventId]
     );
 
@@ -174,7 +173,7 @@ const updateEvent = async (req, res) => {
     if (Array.isArray(roles) && roles.length > 0) {
       // Get existing roles to check which ones to delete
       const [existingRoles] = await conn.query(
-        'SELECT id FROM event_roles WHERE event_id = $1',
+        'SELECT id FROM event_roles WHERE event_id = ?',
         [eventId]
       );
 
@@ -184,11 +183,9 @@ const updateEvent = async (req, res) => {
       // Delete roles that are no longer in the provided list
       const rolesToDelete = existingRoleIds.filter(id => !providedRoleIds.includes(id));
       if (rolesToDelete.length > 0) {
-        // PostgreSQL IN clause with array
-        const placeholders = rolesToDelete.map((_, i) => `$${i + 1}`).join(', ');
         await conn.query(
-          `DELETE FROM event_roles WHERE id IN (${placeholders})`,
-          rolesToDelete
+          'DELETE FROM event_roles WHERE id IN (?)',
+          [rolesToDelete]
         );
       }
 
@@ -197,13 +194,13 @@ const updateEvent = async (req, res) => {
         if (role.id) {
           // Update existing role
           await conn.query(
-            'UPDATE event_roles SET role_name = $1, slots = $2 WHERE id = $3',
+            'UPDATE event_roles SET role_name = ?, slots = ? WHERE id = ?',
             [role.role_name, role.slots || role.total_needed, role.id]
           );
         } else {
           // Insert new role
           await conn.query(
-            'INSERT INTO event_roles (event_id, role_name, slots) VALUES ($1, $2, $3)',
+            'INSERT INTO event_roles (event_id, role_name, slots) VALUES (?, ?, ?)',
             [eventId, role.role_name, role.slots || role.total_needed]
           );
         }
@@ -225,7 +222,7 @@ const deleteEvent = async (req, res) => {
     const { eventId } = req.params;
     const conn = await pool.getConnection();
 
-    await conn.query('DELETE FROM events WHERE id = $1', [eventId]);
+    await conn.query('DELETE FROM events WHERE id = ?', [eventId]);
 
     conn.release();
 
@@ -249,7 +246,7 @@ const applyForRole = async (req, res) => {
     const conn = await pool.getConnection();
 
     // Ensure approved member
-    const [users] = await conn.query('SELECT role, status FROM users WHERE id = $1', [userId]);
+    const [users] = await conn.query('SELECT role, status FROM users WHERE id = ?', [userId]);
     const u = users[0];
     if (!u || u.role !== 'member' || u.status !== 'approved') {
       conn.release();
@@ -258,7 +255,7 @@ const applyForRole = async (req, res) => {
 
     // Ensure role belongs to event
     const [roles] = await conn.query(
-      'SELECT id, slots FROM event_roles WHERE id = $1 AND event_id = $2',
+      'SELECT id, slots FROM event_roles WHERE id = ? AND event_id = ?',
       [role_id, eventId]
     );
     if (roles.length === 0) {
@@ -269,7 +266,7 @@ const applyForRole = async (req, res) => {
     // Check if already applied (only block if pending or approved)
     // Allow re-application if previously rejected
     const [existing] = await conn.query(
-      "SELECT id, status FROM event_applications WHERE event_id = $1 AND user_id = $2 AND role_id = $3 AND status IN ('pending','approved')",
+      "SELECT id, status FROM event_applications WHERE event_id = ? AND user_id = ? AND role_id = ? AND status IN ('pending','approved')",
       [eventId, userId, role_id]
     );
     if (existing.length > 0) {
@@ -282,7 +279,7 @@ const applyForRole = async (req, res) => {
 
     // Create application
     await conn.query(
-      "INSERT INTO event_applications (event_id, role_id, user_id, status) VALUES ($1, $2, $3, 'pending')",
+      "INSERT INTO event_applications (event_id, role_id, user_id, status) VALUES (?, ?, ?, 'pending')",
       [eventId, role_id, userId]
     );
 
@@ -306,7 +303,7 @@ const cancelApplication = async (req, res) => {
 
     // Verify application exists, belongs to user and is pending
     const [rows] = await conn.query(
-      'SELECT id, user_id, status FROM event_applications WHERE id = $1',
+      'SELECT id, user_id, status FROM event_applications WHERE id = ?',
       [applicationId]
     );
 
@@ -327,7 +324,7 @@ const cancelApplication = async (req, res) => {
     }
 
     // Mark as rejected (acts as cancelled)
-    await conn.query("UPDATE event_applications SET status = 'rejected' WHERE id = $1", [applicationId]);
+    await conn.query("UPDATE event_applications SET status = 'rejected' WHERE id = ?", [applicationId]);
 
     conn.release();
     return res.json({ message: 'Application cancelled' });
@@ -362,7 +359,7 @@ const cancelApplication = async (req, res) => {
 
     // Prevent duplicate feedback
     const [existing] = await conn.query(
-      'SELECT id FROM event_feedback WHERE event_id = $1 AND user_id = $2',
+      'SELECT id FROM event_feedback WHERE event_id = ? AND user_id = ?',
       [eventId, userId]
     );
 
@@ -372,7 +369,7 @@ const cancelApplication = async (req, res) => {
     }
 
     await conn.query(
-      'INSERT INTO event_feedback (event_id, user_id, rating, comment) VALUES ($1, $2, $3, $4)',
+      'INSERT INTO event_feedback (event_id, user_id, rating, comment) VALUES (?, ?, ?, ?)',
       [eventId, userId, ratingNum, comment || null]
     );
 
@@ -424,7 +421,7 @@ const getApplicationsForEvent = async (req, res) => {
 
     // 1. Fetch roles for the event
     const [roles] = await conn.query(
-      "SELECT id AS role_id, role_name, slots FROM event_roles WHERE event_id = $1",
+      "SELECT id AS role_id, role_name, slots FROM event_roles WHERE event_id = ?",
       [eventId]
     );
 
@@ -437,13 +434,13 @@ const getApplicationsForEvent = async (req, res) => {
                 u.name, u.email, u.id AS user_id
          FROM event_applications ea
          JOIN users u ON ea.user_id = u.id
-         WHERE ea.role_id = $1
+         WHERE ea.role_id = ?
          ORDER BY ea.created_at ASC`,
         [r.role_id]
       );
 
       const [approvedCount] = await conn.query(
-        "SELECT COUNT(*) AS cnt FROM event_applications WHERE role_id = $1 AND status='approved'",
+        "SELECT COUNT(*) AS cnt FROM event_applications WHERE role_id = ? AND status='approved'",
         [r.role_id]
       );
 
@@ -476,7 +473,7 @@ const approveApplication = async (req, res) => {
       `SELECT ea.role_id, r.slots
        FROM event_applications ea
        JOIN event_roles r ON ea.role_id = r.id
-       WHERE ea.id = $1`,
+       WHERE ea.id = ?`,
       [applicationId]
     );
 
@@ -489,7 +486,7 @@ const approveApplication = async (req, res) => {
 
     // Count approved
     const [count] = await conn.query(
-      "SELECT COUNT(*) AS cnt FROM event_applications WHERE role_id = $1 AND status='approved'",
+      "SELECT COUNT(*) AS cnt FROM event_applications WHERE role_id = ? AND status='approved'",
       [role_id]
     );
 
@@ -499,7 +496,7 @@ const approveApplication = async (req, res) => {
     }
 
     // Approve
-    await conn.query("UPDATE event_applications SET status='approved' WHERE id=$1", [applicationId]);
+    await conn.query("UPDATE event_applications SET status='approved' WHERE id=?", [applicationId]);
 
     conn.release();
     return res.json({ message: 'Application approved' });
@@ -516,7 +513,7 @@ const rejectApplication = async (req, res) => {
     const applicationId = parseInt(req.params.applicationId, 10);
     const conn = await pool.getConnection();
 
-    await conn.query("UPDATE event_applications SET status='rejected' WHERE id=$1", [applicationId]);
+    await conn.query("UPDATE event_applications SET status='rejected' WHERE id=?", [applicationId]);
 
     conn.release();
     return res.json({ message: 'Application rejected' });
@@ -545,7 +542,7 @@ const updateApplicationStatus = async (req, res) => {
         `SELECT ea.role_id, r.slots
          FROM event_applications ea
          JOIN event_roles r ON ea.role_id = r.id
-         WHERE ea.id = $1`,
+         WHERE ea.id = ?`,
         [applicationId]
       );
 
@@ -558,7 +555,7 @@ const updateApplicationStatus = async (req, res) => {
 
       // Count approved
       const [count] = await conn.query(
-        "SELECT COUNT(*) AS cnt FROM event_applications WHERE role_id = $1 AND status='approved'",
+        "SELECT COUNT(*) AS cnt FROM event_applications WHERE role_id = ? AND status='approved'",
         [role_id]
       );
 
@@ -570,7 +567,7 @@ const updateApplicationStatus = async (req, res) => {
 
     // Update status
     await conn.query(
-      'UPDATE event_applications SET status = $1 WHERE id = $2',
+      'UPDATE event_applications SET status = ? WHERE id = ?',
       [status, applicationId]
     );
 
@@ -596,7 +593,7 @@ const getEventFeedback = async (req, res) => {
 
     // Verify event exists
     const [events] = await conn.query(
-      'SELECT id FROM events WHERE id = $1',
+      'SELECT id FROM events WHERE id = ?',
       [eventId]
     );
 
@@ -609,12 +606,12 @@ const getEventFeedback = async (req, res) => {
       SELECT u.name, f.rating, f.comment, f.created_at
       FROM event_feedback f
       JOIN users u ON f.user_id = u.id
-      WHERE f.event_id = $1
+      WHERE f.event_id = ?
       ORDER BY f.created_at DESC
     `, [eventId]);
 
     const [avg] = await conn.query(
-      'SELECT AVG(rating) AS averageRating FROM event_feedback WHERE event_id = $1',
+      'SELECT AVG(rating) AS averageRating FROM event_feedback WHERE event_id = ?',
       [eventId]
     );
 
