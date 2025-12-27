@@ -33,19 +33,20 @@ if (!isTestMode) {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
       },
-      // Increased timeouts to handle slow connections
-      connectionTimeout: 60000, // 60 seconds (was 10)
-      socketTimeout: 60000, // 60 seconds (was 10)
-      greetingTimeout: 30000, // 30 seconds (was 10)
-      // Additional connection options
-      pool: true, // Use connection pooling
-      maxConnections: 1,
-      maxMessages: 3,
-      rateDelta: 1000,
-      rateLimit: 5,
+      // Optimized timeouts for cloud hosting (Render.com)
+      connectionTimeout: 30000, // 30 seconds - shorter for faster failure detection
+      socketTimeout: 30000, // 30 seconds
+      greetingTimeout: 15000, // 15 seconds
+      // Connection options optimized for cloud hosting
+      pool: false, // Disable pooling for cloud - can cause connection issues
+      // Additional connection options for cloud hosting
+      requireTLS: emailPort === 587, // Require TLS for port 587
       tls: {
-        rejectUnauthorized: false
+        rejectUnauthorized: false, // Allow self-signed certificates
+        ciphers: 'SSLv3' // Use SSLv3 for better compatibility
       },
+      // Retry configuration
+      maxRetries: 0, // Let our custom retry logic handle it
       debug: process.env.NODE_ENV === 'development',
       logger: process.env.NODE_ENV === 'development'
     });
@@ -112,11 +113,36 @@ const sendTACEmail = async (email, tacCode) => {
   }
 
   // Retry logic for connection issues
-  const maxRetries = 3;
+  const maxRetries = 2; // Reduced retries for faster failure detection
   let lastError = null;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
+      // Recreate transporter on retry to avoid stale connections
+      let currentTransporter = transporter;
+      if (attempt > 1) {
+        const emailPort = parseInt(process.env.EMAIL_PORT || '587');
+        const useSecure = emailPort === 465;
+        currentTransporter = nodemailer.createTransport({
+          host: process.env.EMAIL_HOST,
+          port: emailPort,
+          secure: useSecure,
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+          },
+          connectionTimeout: 30000,
+          socketTimeout: 30000,
+          greetingTimeout: 15000,
+          pool: false,
+          requireTLS: emailPort === 587,
+          tls: {
+            rejectUnauthorized: false,
+            ciphers: 'SSLv3'
+          }
+        });
+      }
+
       const mailOptions = {
         from: `"GPS UTM" <${process.env.EMAIL_USER}>`,
         to: email,
@@ -146,7 +172,7 @@ const sendTACEmail = async (email, tacCode) => {
         console.log(`🔄 Retrying email send (attempt ${attempt}/${maxRetries})...`);
       }
 
-      await transporter.sendMail(mailOptions);
+      await currentTransporter.sendMail(mailOptions);
       console.log(`✅ TAC email sent to ${email}`);
 
       return { test: false };
@@ -169,8 +195,10 @@ const sendTACEmail = async (email, tacCode) => {
       
       // Retry on connection timeout or connection errors
       if (attempt < maxRetries && (error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET' || error.code === 'ECONNREFUSED' || error.code === 'ECONNECTION')) {
-        const delay = attempt * 2000; // Exponential backoff: 2s, 4s, 6s
+        const delay = attempt * 3000; // Exponential backoff: 3s, 6s
         console.log(`⏳ Waiting ${delay}ms before retry...`);
+        console.log(`   💡 Tip: If this persists, Gmail SMTP may be blocked from Render.com`);
+        console.log(`   💡 Consider using SendGrid, Mailgun, or AWS SES instead (see EMAIL_TROUBLESHOOTING.md)`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -190,6 +218,7 @@ const sendTACEmail = async (email, tacCode) => {
   console.error(`   Last error: ${lastError?.message || 'Unknown error'}`);
   console.error(`   Error code: ${lastError?.code || 'N/A'}`);
   console.error(`   TAC Code (fallback): ${tacCode}`);
+  console.error(`   💡 See EMAIL_TROUBLESHOOTING.md for solutions`);
   
   // Provide user-friendly error message
   let userFriendlyError = 'Email sending failed';
