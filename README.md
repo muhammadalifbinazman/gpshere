@@ -4,10 +4,10 @@ A modern Node.js-based event management system for GPS UTM (Gerakan Pengguna Sis
 
 ## 🚀 Features
 
-- **User Authentication**: TAC-based two-factor authentication via email
+- **User Authentication**: TAC-based two-factor authentication via email (Under Test Mode)
 - **Role-Based Access**: Admin, Member, and Student dashboards
 - **Event Management**: Create, update, and manage events
-- **Email Notifications**: Automated welcome and verification emails
+- **Email Notifications**: Automated welcome and verification emails (Under Test Mode)
 - **Modern UI**: Clean, responsive design with GPS UTM branding
 - **Security**: Bcrypt password hashing, session management
 
