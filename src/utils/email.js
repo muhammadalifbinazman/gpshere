@@ -16,12 +16,23 @@ let transporter = null;
 if (!isTestMode) {
   transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
-    secure: false,
+    port: parseInt(process.env.EMAIL_PORT || '587'),
+    secure: false, // true for 465, false for other ports
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
-    }
+    },
+    // Connection timeout settings for Render.com and cloud environments
+    connectionTimeout: 10000, // 10 seconds to establish connection
+    socketTimeout: 10000, // 10 seconds for socket operations
+    greetingTimeout: 10000, // 10 seconds for SMTP greeting
+    // TLS options
+    tls: {
+      rejectUnauthorized: false // Accept self-signed certificates (if needed)
+    },
+    // Debug mode (set to true to see detailed SMTP logs)
+    debug: process.env.NODE_ENV === 'development',
+    logger: process.env.NODE_ENV === 'development'
   });
 }
 
