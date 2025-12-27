@@ -380,8 +380,8 @@ const logout = (req, res) => {
           return res.status(500).json({ error: "Logout failed" });
         }
 
-        // Remove session cookie
-        res.clearCookie("connect.sid");
+        // Remove session cookie (use custom session name)
+        res.clearCookie("gsphere.sid");
         return res.json({ message: "Logged out successfully" });
       });
     } else {
