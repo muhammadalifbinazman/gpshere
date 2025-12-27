@@ -11,7 +11,7 @@ const API_BASE_URL = `${window.location.origin}/api`;
 // API HELPER FUNCTIONS
 // ============================================
 
-async function apiRequest(endpoint, method = 'GET', data = null) {
+async function apiRequest(endpoint, method = 'GET', data = null, timeout = 30000) {
     const options = {
         method,
         headers: {
@@ -25,16 +25,34 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Request timeout - server took too long to respond')), timeout);
+        });
+
+        // Race between fetch and timeout
+        const response = await Promise.race([
+            fetch(`${API_BASE_URL}${endpoint}`, options),
+            timeoutPromise
+        ]);
+
         const result = await response.json();
 
         if (!response.ok) {
-            throw new Error(result.error || 'Request failed');
+            throw new Error(result.error || result.details || 'Request failed');
         }
 
         return result;
     } catch (error) {
         console.error('API Error:', error);
+        
+        // Provide more helpful error messages
+        if (error.message.includes('timeout')) {
+            throw new Error('Server timeout - please check your connection and try again');
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            throw new Error('Network error - cannot connect to server');
+        }
+        
         throw error;
     }
 }
