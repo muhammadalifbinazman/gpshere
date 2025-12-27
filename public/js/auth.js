@@ -246,14 +246,20 @@ async function handleLogin(e) {
             // Store email for TAC verification
             sessionStorage.setItem('pendingEmail', email);
             
-            // If TAC is in response (test mode or email failed), show it
+            // If TAC is in response (test mode or email failed), show it prominently
             if (response.tac) {
                 console.log('🔐 TAC CODE:', response.tac);
-                if (response.emailError || response.reason) {
-                    AppUtils.showWarning(`Email sending failed. Your TAC code is: ${response.tac}`);
+                if (response.emailFailed || response.emailError) {
+                    // Email failed - show TAC prominently so user can still log in
+                    AppUtils.showWarning(`⚠️ Email sending failed. Your TAC code is: ${response.tac}`);
+                    AppUtils.showError(`Email Error: ${response.emailError || response.reason || 'Unknown error'}`);
                     console.error('Email error:', response.emailError || response.reason);
-                } else {
+                } else if (response.test) {
+                    // Test mode
                     AppUtils.showInfo(`TAC Code (Test Mode): ${response.tac}`);
+                } else {
+                    // Development mode - email sent but TAC shown for testing
+                    AppUtils.showInfo(`TAC Code (Dev Mode): ${response.tac}`);
                 }
             } else {
                 // Email was sent successfully - show success message
