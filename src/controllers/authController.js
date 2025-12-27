@@ -144,41 +144,53 @@ const login = async (req, res) => {
     // Send TAC via email (non-blocking - if email fails, still allow login)
     let emailSent = false;
     let emailError = null;
+    let isTestMode = false;
     
     try {
       const result = await sendTACEmail(email, tacCode);
       
-      // TEST MODE → Return TAC directly (no email)
+      // Check if it's actual test mode (TAC_TEST_MODE=true) or email failure
       if (result.test) {
+        isTestMode = result.reason === undefined; // Test mode has no reason
+        emailError = result.reason; // Email failure has a reason
+        
+        // Always return TAC when email fails or in test mode (so users can still log in)
         return res.json({
-          message: "TAC generated (TEST MODE). No email sent.",
+          message: isTestMode 
+            ? "TAC generated (TEST MODE). No email sent."
+            : `TAC generated. Email sending failed: ${result.reason || 'Unknown error'}. Please use the code below.`,
           requiresTAC: true,
-          tac: result.tac
+          tac: result.tac,
+          emailFailed: !isTestMode,
+          emailError: emailError
         });
       }
       
       emailSent = true;
+      console.log(`✅ TAC email successfully sent to ${email}`);
     } catch (emailErr) {
-      console.error('❌ Email sending failed, but continuing with login:', emailErr.message);
+      console.error('❌ Email sending failed with exception:', emailErr.message);
       emailError = emailErr.message;
-      // Continue - don't block login if email fails
+      // Return TAC so user can still log in even if email fails
+      return res.json({
+        message: `TAC generated. Email sending failed: ${emailErr.message}. Please use the code below.`,
+        requiresTAC: true,
+        tac: tacCode,
+        emailFailed: true,
+        emailError: emailError
+      });
     }
 
-    // Return response (with TAC if email failed, for development/testing)
+    // Email was sent successfully
     const response = {
-      message: emailSent 
-        ? 'TAC code sent to your email. Please verify to complete login.'
-        : 'TAC code generated. Email sending failed - check console/logs for TAC code.',
+      message: 'TAC code sent to your email. Please check your inbox and verify to complete login.',
       requiresTAC: true
     };
 
-    // In development or if email failed, include TAC in response for testing
-    if (process.env.NODE_ENV === 'development' || !emailSent) {
+    // In development mode, also include TAC in response for testing
+    if (process.env.NODE_ENV === 'development') {
       response.tac = tacCode;
-      if (emailError) {
-        response.emailError = emailError;
-      }
-      console.log(`🔐 TAC Code for ${email}: ${tacCode}`);
+      console.log(`🔐 [DEV MODE] TAC Code for ${email}: ${tacCode}`);
     }
 
     return res.json(response);
