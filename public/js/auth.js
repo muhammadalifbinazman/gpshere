@@ -236,9 +236,11 @@ async function handleLogin(e) {
         });
 
         console.log('Login response:', response);
+        console.log('requiresTAC:', response.requiresTAC, 'requireTAC:', response.requireTAC);
 
         // Check if TAC is required
         if (response.requiresTAC || response.requireTAC) {
+            console.log('✅ TAC required - showing modal');
             AppUtils.hideLoader();
             
             // Store email for TAC verification
@@ -253,9 +255,13 @@ async function handleLogin(e) {
                 } else {
                     AppUtils.showInfo(`TAC Code (Test Mode): ${response.tac}`);
                 }
+            } else {
+                // Email was sent successfully - show success message
+                AppUtils.showSuccess(response.message || 'TAC code sent to your email');
             }
             
-            // Show TAC verification modal
+            // Always show TAC verification modal when requiresTAC is true
+            console.log('🔐 Showing TAC modal for:', email);
             showTACModal(email);
         } else {
             AppUtils.hideLoader();
@@ -360,11 +366,24 @@ async function handleRegister(e) {
 // ============================================
 
 function showTACModal(email) {
-    const modal = document.getElementById('tacModal');
+    console.log('🔐 showTACModal called with email:', email);
+    
+    let modal = document.getElementById('tacModal');
+    
+    // If modal doesn't exist, create it
     if (!modal) {
+        console.log('🔐 TAC modal not found, creating...');
         createTACModal();
+        modal = document.getElementById('tacModal');
     }
     
+    if (!modal) {
+        console.error('❌ Failed to create TAC modal');
+        AppUtils.showError('Failed to show verification modal. Please refresh the page.');
+        return;
+    }
+    
+    // Update email display
     const emailDisplay = document.getElementById('tacEmail');
     if (emailDisplay) {
         emailDisplay.textContent = email;
@@ -373,13 +392,41 @@ function showTACModal(email) {
     // Start countdown timer
     startTACTimer(15 * 60); // 15 minutes
     
+    // Show the modal
+    console.log('🔐 Opening TAC modal...');
     AppUtils.openModal('tacModal');
     
-    // Focus on TAC input
-    document.getElementById('tacInput').focus();
+    // Verify modal is actually shown
+    setTimeout(() => {
+        const modal = document.getElementById('tacModal');
+        if (modal && modal.classList.contains('show')) {
+            console.log('✅ TAC modal is visible');
+        } else {
+            console.error('❌ TAC modal not visible after opening');
+            // Force show the modal
+            if (modal) {
+                modal.classList.add('show');
+                modal.style.display = 'flex';
+            }
+        }
+        
+        const tacInput = document.getElementById('tacInput');
+        if (tacInput) {
+            tacInput.focus();
+        } else {
+            console.error('❌ TAC input not found');
+        }
+    }, 100);
 }
 
 function createTACModal() {
+    // Check if modal already exists
+    if (document.getElementById('tacModal')) {
+        console.log('🔐 TAC modal already exists, skipping creation');
+        return;
+    }
+    
+    console.log('🔐 Creating TAC modal dynamically...');
     const modalHTML = `
         <div id="tacModal" class="tac-modal">
             <div class="tac-content">
@@ -413,11 +460,16 @@ function createTACModal() {
     document.body.insertAdjacentHTML('beforeend', modalHTML);
     
     // Add enter key listener
-    document.getElementById('tacInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            verifyTAC();
-        }
-    });
+    const tacInput = document.getElementById('tacInput');
+    if (tacInput) {
+        tacInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                verifyTAC();
+            }
+        });
+    }
+    
+    console.log('✅ TAC modal created successfully');
 }
 
 let tacTimerInterval;
