@@ -141,23 +141,47 @@ const login = async (req, res) => {
 
     conn.release();
 
-    // Send TAC via email
-    const result =  await sendTACEmail(email, tacCode);
+    // Send TAC via email (non-blocking - if email fails, still allow login)
+    let emailSent = false;
+    let emailError = null;
+    
+    try {
+      const result = await sendTACEmail(email, tacCode);
+      
+      // TEST MODE → Return TAC directly (no email)
+      if (result.test) {
+        return res.json({
+          message: "TAC generated (TEST MODE). No email sent.",
+          requiresTAC: true,
+          tac: result.tac
+        });
+      }
+      
+      emailSent = true;
+    } catch (emailErr) {
+      console.error('❌ Email sending failed, but continuing with login:', emailErr.message);
+      emailError = emailErr.message;
+      // Continue - don't block login if email fails
+    }
 
-     // TEST MODE → Return TAC directly (no email)
-    if (result.test) {
-    return res.json({
-    message: "TAC generated (TEST MODE). No email sent.",
-    requireTAC: true,
-    tac: result.tac  // for easy testing
-  });
-}
-
-    // (Normal) Return message (don't send token yet - user must verify TAC)
-    return res.json({ 
-      message: 'TAC code sent to your email. Please verify to complete login.',
+    // Return response (with TAC if email failed, for development/testing)
+    const response = {
+      message: emailSent 
+        ? 'TAC code sent to your email. Please verify to complete login.'
+        : 'TAC code generated. Email sending failed - check console/logs for TAC code.',
       requiresTAC: true
-    });
+    };
+
+    // In development or if email failed, include TAC in response for testing
+    if (process.env.NODE_ENV === 'development' || !emailSent) {
+      response.tac = tacCode;
+      if (emailError) {
+        response.emailError = emailError;
+      }
+      console.log(`🔐 TAC Code for ${email}: ${tacCode}`);
+    }
+
+    return res.json(response);
   } catch (error) {
     console.error('Login error:', error);
     // Ensure connection is released even on error
