@@ -824,12 +824,13 @@
         }
 
         async function loadUsers() {
+            const usersListEl = document.getElementById('usersList');
             try {
                 const users = await AppUtils.apiRequest('/user/all');
                 usersData = users;
                 
                 if (users.length === 0) {
-                    document.getElementById('usersList').innerHTML = `
+                    usersListEl.innerHTML = `
                         <div class="empty-state">
                             <div class="empty-state-icon">👥</div>
                             <h3>No Users Found</h3>
@@ -839,8 +840,21 @@
                     renderUsers(users);
                 }
             } catch (error) {
-                AppUtils.showError('Failed to load users');
-                console.error(error);
+                console.error('Failed to load users:', error);
+                
+                // Show error message in the users list area
+                usersListEl.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <h3>Failed to Load Users</h3>
+                        <p style="color: #dc2626; margin-top: 10px;">${error.message || 'Please check your connection and try again'}</p>
+                        <button onclick="loadUsers()" style="margin-top: 15px; padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                            Retry
+                        </button>
+                    </div>
+                `;
+                
+                AppUtils.showError(`Failed to load users: ${error.message || 'Unknown error'}`);
             }
         }
 
@@ -933,12 +947,13 @@
         }
 
         async function loadApplications() {
+            const applicationsListEl = document.getElementById('applicationsList');
             try {
                 const applications = await AppUtils.apiRequest('/user/admin/applications');
                 applicationsData = applications;
                 
                 if (applications.length === 0) {
-                    document.getElementById('applicationsList').innerHTML = `
+                    applicationsListEl.innerHTML = `
                         <div class="empty-state">
                             <div class="empty-state-icon">📝</div>
                             <h3>No Applications Yet</h3>
@@ -951,8 +966,21 @@
                 // Update analytics
                 updateAnalytics();
             } catch (error) {
-                AppUtils.showError('Failed to load applications');
-                console.error(error);
+                console.error('Failed to load applications:', error);
+                
+                // Show error message in the applications list area
+                applicationsListEl.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <h3>Failed to Load Applications</h3>
+                        <p style="color: #dc2626; margin-top: 10px;">${error.message || 'Please check your connection and try again'}</p>
+                        <button onclick="loadApplications()" style="margin-top: 15px; padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                            Retry
+                        </button>
+                    </div>
+                `;
+                
+                AppUtils.showError(`Failed to load applications: ${error.message || 'Unknown error'}`);
             }
         }
         
