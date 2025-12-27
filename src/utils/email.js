@@ -14,26 +14,34 @@ const isTestMode = process.env.TAC_TEST_MODE === 'true';
 // Create transporter (only if NOT in test mode)
 let transporter = null;
 if (!isTestMode) {
-  transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT || '587'),
-    secure: false, // true for 465, false for other ports
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    },
-    // Connection timeout settings for Render.com and cloud environments
-    connectionTimeout: 10000, // 10 seconds to establish connection
-    socketTimeout: 10000, // 10 seconds for socket operations
-    greetingTimeout: 10000, // 10 seconds for SMTP greeting
-    // TLS options
-    tls: {
-      rejectUnauthorized: false // Accept self-signed certificates (if needed)
-    },
-    // Debug mode (set to true to see detailed SMTP logs)
-    debug: process.env.NODE_ENV === 'development',
-    logger: process.env.NODE_ENV === 'development'
-  });
+  // Validate email configuration
+  if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn('⚠️ Email configuration incomplete. TAC codes will be returned in API response.');
+    console.warn('   Missing: EMAIL_HOST, EMAIL_USER, or EMAIL_PASS');
+  } else {
+    const emailPort = parseInt(process.env.EMAIL_PORT || '587');
+    const useSecure = emailPort === 465;
+    
+    transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST,
+      port: emailPort,
+      secure: useSecure,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      },
+      connectionTimeout: 10000,
+      socketTimeout: 10000,
+      greetingTimeout: 10000,
+      tls: {
+        rejectUnauthorized: false
+      },
+      debug: process.env.NODE_ENV === 'development',
+      logger: process.env.NODE_ENV === 'development'
+    });
+    
+    console.log(`📧 Email transporter configured: ${process.env.EMAIL_HOST}:${emailPort} (secure: ${useSecure})`);
+  }
 }
 
 // ============================================
@@ -50,6 +58,15 @@ const sendTACEmail = async (email, tacCode) => {
   }
 
   // PRODUCTION MODE: send email normally
+  if (!transporter) {
+    console.warn(`⚠️ Email transporter not configured. TAC for ${email}: ${tacCode}`);
+    return {
+      test: true,
+      tac: tacCode,
+      reason: 'Email not configured'
+    };
+  }
+
   try {
     const mailOptions = {
       from: `"GPS UTM" <${process.env.EMAIL_USER}>`,
@@ -82,7 +99,15 @@ const sendTACEmail = async (email, tacCode) => {
     return { test: false };
   } catch (error) {
     console.error('❌ Email sending failed:', error.message);
-    throw error;
+    console.error('   Error code:', error.code);
+    console.error('   Error command:', error.command);
+    
+    // Return TAC in response if email fails (for development/testing)
+    return {
+      test: true,
+      tac: tacCode,
+      reason: `Email failed: ${error.message}`
+    };
   }
 };
 
