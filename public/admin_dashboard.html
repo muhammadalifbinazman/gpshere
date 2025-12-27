@@ -709,8 +709,18 @@
                 }
                 
             } catch (error) {
+                console.error('Failed to load profile:', error);
+                
+                // If "Not logged in" error, redirect to login
+                if (error.message && error.message.includes('Not logged in')) {
+                    AppUtils.showError('Session expired. Please log in again.');
+                    setTimeout(() => {
+                        window.location.href = '/login_register.html';
+                    }, 2000);
+                    return;
+                }
+                
                 AppUtils.showError('Failed to load profile');
-                console.error(error);
             }
         }
 
